@@ -12,4 +12,4 @@ Gardino Lucas:DBA
 Rende Manuel:DEV
 Arce Federico:PM
 
-Color de Grupo:
+Color de Grupo: Azul.
