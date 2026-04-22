@@ -6,10 +6,15 @@ Descripcion del proyecto: Este proyecto consta de un gestionador de reservas tur
 Lenguajes que utilizaremos:
 
 Roles de los integrantes:
+
 Garcia Federico:UX
+
 Salierno Eduardo:DEV  
+
 Gardino Lucas:DBA
+
 Rende Manuel:DEV
+
 Arce Federico:PM
 
 Color de Grupo: Azul.
