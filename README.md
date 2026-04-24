@@ -18,6 +18,10 @@ Descripcion del proyecto: Este proyecto consta de un gestionador de reservas tur
 
 Lenguajes que utilizaremos:
 
+Base de datos:SQLight
+Backend: Python y JavaScript.
+Frontend: HTML y CSS.
+
 Roles de los integrantes:
 
 Garcia Federico:UX
