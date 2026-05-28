@@ -5,6 +5,7 @@ from django.contrib.auth.models import AbstractUser
 class Usuario(AbstractUser):
     dni = models.IntegerField()
     telefono = models.CharField(max_length = 15)
+    REQUIRED_FIELDS = ['dni', 'telefono']
 
 
 class Alojamiento(models.Model):
