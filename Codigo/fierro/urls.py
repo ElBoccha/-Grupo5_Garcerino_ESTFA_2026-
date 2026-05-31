@@ -21,7 +21,6 @@ from hotelghino import views
 urlpatterns = [
     path('', views.login_view, name='login'),
     path('home/', views.home, name='home'),
-    path("accounts/", include("django.contrib.auth.urls")),
     path('registro/', views.registro, name='registro'),
     
 ]
