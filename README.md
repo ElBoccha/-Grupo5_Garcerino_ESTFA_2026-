@@ -7,22 +7,22 @@ Este repositorio esta totalmente enfocado al desarrollo del proyecto Garcerino d
 
 **Lenguajes que utilizaremos:**
 
-Base de datos:SQLight
+Base de datos: SQLite
 
-Backend: Python y JavaScript.
+Backend: Python.
 
 Frontend: HTML y CSS.
 
 **Roles de los integrantes:**
 
-Garcia Federico:UX
+Garcia Federico: UX
 
-Salierno Eduardo:DEV  
+Salierno Eduardo: DEV  
 
-Gardino Lucas:DBA
+Gardino Lucas: DBA
 
-Rende Manuel:DEV
+Rende Manuel: DEV
 
-Arce Federico:PM
+Arce Federico: PM
 
 **Color de Grupo:** Azul.
