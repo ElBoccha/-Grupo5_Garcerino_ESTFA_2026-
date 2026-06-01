@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from .forms import RegistroUsuario
+from .forms import RegistroAlojamiento
 
 # Create your views here.
 
@@ -46,6 +47,20 @@ def login_view(request):
 @login_required
 def home(request):
     return render(request, 'home.html')
+
+# Formulario de registro de alojamiento
+
+def registroAlojamiento(request):
+    if request.method == 'POST':
+        form = RegistroAlojamiento(request.POST)
+
+        if form.is_valid():
+            form.save()
+
+    else:
+        form = RegistroAlojamiento()
+
+    return render(request, 'registro-hoteles.html', {'form': form})
 
 
     
