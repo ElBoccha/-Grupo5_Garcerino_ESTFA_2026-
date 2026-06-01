@@ -1,0 +1,15 @@
+<html>
+<head>
+    <title>Registro de Alojamiento</title>
+</head>
+<body>
+
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <button type="submit">Registrar Alojamiento</button>
+    </form>
+
+</body>
+</html>
