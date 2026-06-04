@@ -1,20 +1,61 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from datetime import datetime
 
 # Create your models here.
+
 class Usuario(AbstractUser):
     dni = models.IntegerField()
     telefono = models.CharField(max_length = 15)
+    ROLES = (
+        ('H', 'Huesped'),
+        ('P', 'Propietario'),
+        ('A', 'Administrador'),
+    )
+    rol = models.CharField(
+        max_length=1,
+        choices=ROLES,
+        default='H'
+    )
     REQUIRED_FIELDS = ['dni', 'telefono']
 
 
 class Alojamiento(models.Model):
+    ESTADOS = (
+        ('P', 'Pendiente'),
+        ('A', 'Activo'),
+        ('R', 'Rechazado'),
+    )
+    TIPOS = (
+        ('HT', 'Hotel'),
+        ('HS', 'Hostel'),
+        ('CA', 'Casa'),
+        ('DP', 'Departamento'),
+        ('CB', 'Cabana')
+    )   
     nombre = models.CharField(max_length = 50)
     tipo = models.CharField(max_length = 20)
-    calle = models.CharField(max_length = 50)
+    calle = models.CharField(
+        max_length = 50,
+        choices=TIPOS,
+        default='HT'
+    )
     numero_calle = models.CharField(max_length = 10)
-    descripcion = models.CharField(max_length = 1000)
-    id_usuario = models.ForeignKey(Usuario, on_delete = models.CASCADE)
+    descripcion = models.TextField()
+    id_usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE
+    )
+    estado = models.CharField(
+        max_length=1,
+        choices=ESTADOS,
+        default='P'
+    )
+    fecha_creacion = models.DateTimeField(default=datetime.now)
+    fecha_aprobacion = models.DateTimeField(
+    null=True,
+    blank=True
+    )
 
 
 class Habitacion(models.Model):
@@ -47,9 +88,34 @@ class Promocion(models.Model):
 
 class Reseña(models.Model):
     calificacion = models.IntegerField()
-    descripción = models.CharField(max_length = 1000)
+    descripción = models.TextField()
     id_alohamiento = models.ForeignKey(Alojamiento, on_delete = models.CASCADE)
     id_usuario = models.ForeignKey(Usuario, on_delete = models.CASCADE)
+
+class SolicitudPropietario(models.Model):
+
+    ESTADOS = (
+        ('P', 'Pendiente'),
+        ('A', 'Aprobada'),
+        ('R', 'Rechazada'),
+    )
+
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.CASCADE
+    )
+
+    motivo = models.TextField()
+
+    estado = models.CharField(
+        max_length=1,
+        choices=ESTADOS,
+        default='P'
+    )
+
+    fecha_solicitud = models.DateTimeField(
+        auto_now_add=True
+    )
 
 
 

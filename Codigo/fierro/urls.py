@@ -25,4 +25,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("alojamientos/", views.registroAlojamiento, name="alojamientos"),
     
+    
 ]
