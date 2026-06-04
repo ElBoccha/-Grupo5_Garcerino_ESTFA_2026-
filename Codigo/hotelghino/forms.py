@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import Usuario
 from .models import Alojamiento
+from .models import SolicitudPropietario
 
 class RegistroUsuario(UserCreationForm):
 
@@ -28,4 +29,12 @@ class RegistroAlojamiento(forms.ModelForm):
             "numero_calle",
             "descripcion",
             "id_usuario",
+        ]
+
+class SolicitudPropietarioForm(forms.ModelForm):
+
+    class Meta:
+        model = SolicitudPropietario
+        fields = [
+            "motivo",
         ]
