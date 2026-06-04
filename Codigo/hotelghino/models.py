@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from datetime import datetime
+from django.utils import timezone
 
 # Create your models here.
 
@@ -51,7 +51,7 @@ class Alojamiento(models.Model):
         choices=ESTADOS,
         default='P'
     )
-    fecha_creacion = models.DateTimeField(default=datetime.now)
+    fecha_creacion = models.DateTimeField(default=timezone.now)
     fecha_aprobacion = models.DateTimeField(
     null=True,
     blank=True
@@ -114,7 +114,7 @@ class SolicitudPropietario(models.Model):
     )
 
     fecha_solicitud = models.DateTimeField(
-        auto_now_add=True
+        default=timezone.now
     )
 
 
