@@ -19,6 +19,9 @@ class Usuario(AbstractUser):
     )
     REQUIRED_FIELDS = ['dni', 'telefono']
 
+    def __str__(self):
+        return self.username
+
 
 class Alojamiento(models.Model):
     ESTADOS = (
@@ -85,12 +88,19 @@ class Promocion(models.Model):
     id_alojamiento = models.ForeignKey(Alojamiento, on_delete = models.CASCADE)
     id_usuario = models.ForeignKey(Usuario, on_delete = models.CASCADE)
 
+    def __str__(self):
+        return f"Promoción {self.descuento}% - {self.id_alojamiento}"
+
 
 class Reseña(models.Model):
     calificacion = models.IntegerField()
     descripción = models.TextField()
     id_alohamiento = models.ForeignKey(Alojamiento, on_delete = models.CASCADE)
     id_usuario = models.ForeignKey(Usuario, on_delete = models.CASCADE)
+
+    def __str__(self):
+        return f"Reseña {self.calificacion} - {self.id_usuario}"
+
 
 class SolicitudPropietario(models.Model):
 
@@ -116,6 +126,9 @@ class SolicitudPropietario(models.Model):
     fecha_solicitud = models.DateTimeField(
         default=timezone.now
     )
+
+    def __str__(self):
+        return f"Solicitud de {self.usuario.username} - {self.get_estado_display()}"
 
 
 
