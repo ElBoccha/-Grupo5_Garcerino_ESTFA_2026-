@@ -62,6 +62,20 @@ def registroAlojamiento(request):
 
     return render(request, 'registro-hoteles.html', {'form': form})
 
+# Formulario de petición de propietario
+
+def solicitudPropietario(request):
+    if request.method == 'POST':
+        form = solicitudPropietario(request.POST)
+
+        if form.is_valid():
+            form.save()
+
+    else:
+        form = solicitudPropietario()
+
+    return render(request, 'propietario.html', {'form': form})
+
 
     
     
