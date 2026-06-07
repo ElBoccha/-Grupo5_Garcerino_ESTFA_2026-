@@ -1,0 +1,28 @@
+<html>
+<head>
+    <title>Solicitud de propietario</title>
+</head>
+<body>
+
+    <h1>Solicitud para registrar alojamientos</h1>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    {% if solicitud_pendiente %}
+        <p>Ya tenes una solicitud pendiente de revision.</p>
+        <a href="{% url 'home' %}">Volver al inicio</a>
+    {% else %}
+        <form method="POST">
+            {% csrf_token %}
+            {{ form.as_p }}
+
+            <button type="submit">Enviar solicitud</button>
+        </form>
+    {% endif %}
+
+</body>
+</html>
