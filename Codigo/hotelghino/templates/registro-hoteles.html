@@ -4,6 +4,14 @@
 </head>
 <body>
 
+    <h1>Registrar alojamiento</h1>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
     <form method="POST">
         {% csrf_token %}
         {{ form.as_p }}

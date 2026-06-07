@@ -28,7 +28,6 @@ class RegistroAlojamiento(forms.ModelForm):
             "calle",
             "numero_calle",
             "descripcion",
-            "id_usuario",
         ]
 
 class SolicitudPropietarioForm(forms.ModelForm):

@@ -8,22 +8,33 @@
     <title>Hotelghino Hoteles de todo el mundo para todos</title>
     <link rel="stylesheet" href="{% static 'css/style4.css' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
 <body>
     <header class="header"></header>
 <div class="logo-titulo">
     <img src="logo.png" alt="logo" class="logo">
     <h1>Hotelghino</h1>
-        <input type="text" placeholder="¿Donde vamos?">
-        <label>Destino</label>
+    <input type="text" placeholder="Donde vamos?">
+    <label>Destino</label>
     <input type="date">
-    <label>¿Cuando queres reservar?</label>
+    <label>Cuando queres reservar?</label>
     <input type="date">
-    <label>¿Hasta que dia queres reservar?</label>
+    <label>Hasta que dia queres reservar?</label>
     <button type="submit">Buscar</button>
-    <a href="{% url 'propietario' %}">¿Querés registrar tu alojamiento?</a>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    {% if user.rol == 'P' or user.rol == 'A' %}
+        <a href="{% url 'alojamientos' %}">Registrar alojamiento</a>
+    {% else %}
+        <a href="{% url 'propietario' %}">Queres registrar tu alojamiento?</a>
+    {% endif %}
 </div>
     <h2>Encontra tu proximo Hotel</h2>
 <div class="Bordes">
@@ -39,13 +50,12 @@
         <img src="imagen2.png" alt="">
         <a href=""><b>O2 Hotel Mar del Plata</b></a>
         <p>Precio por una semana</p>
-</div>
+    </div>
     <div class="card">
         <img src="imagen4.png" alt="">
         <a href=""><b>Grand Hotel Mar del Plata</b></a>
         <p>Precio por una semana</p>
     </div>
-    
 </div>
     <h3>Pinamar</h3>
 <div class="hoteles1">
@@ -67,8 +77,6 @@
         <p>Precio por una semana</p>
     </div>
 </div>
-    
-
 </div>
 </body>
 </html>
