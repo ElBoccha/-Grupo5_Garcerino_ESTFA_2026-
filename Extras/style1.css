@@ -1,0 +1,12 @@
+div{
+    width: 300px;
+    height: 300px;
+}
+
+h1, h2, h3{
+    font-family: 'Montserrat', sans-serif;
+}
+
+h1{
+   color: #6495ED;  
+}
