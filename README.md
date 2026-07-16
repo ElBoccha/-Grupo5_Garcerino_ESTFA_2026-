@@ -26,3 +26,40 @@ Rende Manuel: DEV
 Arce Federico: PM
 
 **Color de Grupo:** Azul.
+
+## Ejecucion local
+
+El proyecto Django esta dentro de la carpeta `Codigo`.
+
+1. Entrar a la carpeta:
+   ```powershell
+   cd Codigo
+   ```
+2. Instalar dependencias en un entorno virtual nuevo:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+3. Aplicar migraciones y correr la pagina:
+   ```powershell
+   python manage.py migrate
+   python manage.py runserver
+   ```
+
+La pagina queda disponible en `http://127.0.0.1:8000/`.
+
+Nota: no uses la carpeta `Codigo/venv` que quedo en el repositorio, porque fue creada en Linux y no funciona bien en Windows. Crea un entorno nuevo con los pasos de arriba.
+
+## Deploy en Render
+
+El repositorio incluye `render.yaml` para crear el servicio desde Render Blueprint.
+
+Si lo configuras manualmente en Render:
+
+- Root Directory: `Codigo`
+- Build Command: `bash build.sh`
+- Start Command: `gunicorn fierro.wsgi:application --log-file -`
+- Variables: `DEBUG=False`, `SECRET_KEY`, `ALLOWED_HOSTS=.onrender.com`, `CSRF_TRUSTED_ORIGINS=https://*.onrender.com`
+
+Si usas una URL propia de Render o un dominio personalizado, agrega ese host a `ALLOWED_HOSTS` y su origen HTTPS a `CSRF_TRUSTED_ORIGINS`.

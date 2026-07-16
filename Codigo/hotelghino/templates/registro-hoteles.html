@@ -1,23 +1,33 @@
-<html>
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
 <head>
-    <title>Registro de Alojamiento</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de hotel</title>
+    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
 </head>
 <body>
+    <main class="panel-configuracion">
+        <h1>Registrar hotel</h1>
 
-    <h1>Registrar alojamiento</h1>
+        {% if messages %}
+            <div class="mensajes">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+        <form method="POST" class="formulario-usuario">
+            {% csrf_token %}
+            {{ form.as_p }}
 
-    <form method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
+            <button type="submit">Registrar hotel</button>
+        </form>
 
-        <button type="submit">Registrar Alojamiento</button>
-    </form>
-
+        <a href="{% url 'home' %}">Volver al inicio</a>
+    </main>
 </body>
 </html>

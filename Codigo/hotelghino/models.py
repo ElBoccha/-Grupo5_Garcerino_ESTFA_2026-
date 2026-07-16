@@ -37,12 +37,12 @@ class Alojamiento(models.Model):
         ('CB', 'Cabana')
     )   
     nombre = models.CharField(max_length = 50)
-    tipo = models.CharField(max_length = 20)
-    calle = models.CharField(
-        max_length = 50,
+    tipo = models.CharField(
+        max_length = 20,
         choices=TIPOS,
         default='HT'
     )
+    calle = models.CharField(max_length = 50)
     numero_calle = models.CharField(max_length = 10)
     descripcion = models.TextField()
     id_usuario = models.ForeignKey(

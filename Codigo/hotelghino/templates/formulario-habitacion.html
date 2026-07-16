@@ -5,21 +5,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro</title>
+    <title>{{ titulo }}</title>
     <link rel="stylesheet" href="{% static 'css/style4.css' %}">
 </head>
 <body>
     <main class="panel-configuracion">
-        <h1>Crear cuenta</h1>
+        <h1>{{ titulo }}</h1>
+        <p>{{ alojamiento.nombre }}</p>
 
         <form method="POST" class="formulario-usuario">
             {% csrf_token %}
             {{ form.as_p }}
 
-            <button type="submit">Registrarse</button>
+            <button type="submit">{{ boton }}</button>
         </form>
 
-        <a href="{% url 'login' %}">Volver al login</a>
+        <a href="{% url 'mis_hoteles' %}">Volver a mis hoteles</a>
     </main>
 </body>
 </html>

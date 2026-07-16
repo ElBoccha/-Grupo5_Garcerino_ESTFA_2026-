@@ -1,28 +1,36 @@
-<html>
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solicitud de propietario</title>
+    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
 </head>
 <body>
+    <main class="panel-configuracion">
+        <h1>Solicitud para registrar alojamientos</h1>
 
-    <h1>Solicitud para registrar alojamientos</h1>
+        {% if messages %}
+            <div class="mensajes">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+        {% if solicitud_pendiente %}
+            <p>Ya tenes una solicitud pendiente de revision.</p>
+            <a href="{% url 'home' %}">Volver al inicio</a>
+        {% else %}
+            <form method="POST" class="formulario-usuario">
+                {% csrf_token %}
+                {{ form.as_p }}
 
-    {% if solicitud_pendiente %}
-        <p>Ya tenes una solicitud pendiente de revision.</p>
-        <a href="{% url 'home' %}">Volver al inicio</a>
-    {% else %}
-        <form method="POST">
-            {% csrf_token %}
-            {{ form.as_p }}
-
-            <button type="submit">Enviar solicitud</button>
-        </form>
-    {% endif %}
-
+                <button type="submit">Enviar solicitud</button>
+            </form>
+        {% endif %}
+    </main>
 </body>
 </html>
