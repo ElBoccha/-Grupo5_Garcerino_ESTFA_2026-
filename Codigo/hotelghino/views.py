@@ -1,10 +1,15 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import authenticate, login
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from .forms import RegistroUsuario
+from .forms import ModificarUsuarioForm
 from .forms import RegistroAlojamiento
+from .forms import HabitacionForm
 from .forms import SolicitudPropietarioForm
+from .models import Alojamiento
+from .models import Habitacion
 from .models import SolicitudPropietario
 
 
@@ -14,6 +19,7 @@ def registro(request):
 
         if form.is_valid():
             form.save()
+            messages.success(request, 'Usuario registrado correctamente. Ya podes iniciar sesion.')
             return redirect('login')
     else:
         form = RegistroUsuario()
@@ -43,8 +49,32 @@ def home(request):
 
 
 @login_required
+def configuracion(request):
+    return render(request, 'configuracion.html')
+
+
+@login_required
+def modificarUsuario(request):
+    if request.method == 'POST':
+        form = ModificarUsuarioForm(request.POST, instance=request.user)
+
+        if form.is_valid():
+            usuario = form.save()
+
+            if form.cleaned_data.get('password1'):
+                update_session_auth_hash(request, usuario)
+
+            messages.success(request, 'Tus datos se actualizaron correctamente.')
+            return redirect('home')
+    else:
+        form = ModificarUsuarioForm(instance=request.user)
+
+    return render(request, 'modificar-usuario.html', {'form': form})
+
+
+@login_required
 def registroAlojamiento(request):
-    if request.user.rol not in ['P', 'A']:
+    if request.user.rol != 'P':
         messages.warning(request, 'Primero tenes que solicitar ser propietario y esperar la aprobacion.')
         return redirect('propietario')
 
@@ -53,10 +83,11 @@ def registroAlojamiento(request):
 
         if form.is_valid():
             alojamiento = form.save(commit=False)
+            alojamiento.tipo = 'HT'
             alojamiento.id_usuario = request.user
             alojamiento.save()
-            messages.success(request, 'Alojamiento registrado correctamente.')
-            return redirect('home')
+            messages.success(request, 'Hotel registrado correctamente.')
+            return redirect('mis_hoteles')
     else:
         form = RegistroAlojamiento()
 
@@ -64,10 +95,178 @@ def registroAlojamiento(request):
 
 
 @login_required
+def misHoteles(request):
+    if request.user.rol != 'P':
+        messages.warning(request, 'Solo los propietarios pueden administrar hoteles.')
+        return redirect('home')
+
+    alojamientos = Alojamiento.objects.filter(
+        id_usuario=request.user,
+        tipo='HT'
+    ).prefetch_related('habitacion_set').order_by('-fecha_creacion')
+
+    return render(request, 'mis-hoteles.html', {'alojamientos': alojamientos})
+
+
+@login_required
+def modificarAlojamiento(request, alojamiento_id):
+    if request.user.rol != 'P':
+        messages.warning(request, 'Solo los propietarios pueden administrar hoteles.')
+        return redirect('home')
+
+    alojamiento = get_object_or_404(
+        Alojamiento,
+        pk=alojamiento_id,
+        id_usuario=request.user,
+        tipo='HT'
+    )
+
+    if request.method == 'POST':
+        form = RegistroAlojamiento(request.POST, instance=alojamiento)
+
+        if form.is_valid():
+            hotel = form.save(commit=False)
+            hotel.tipo = 'HT'
+            hotel.id_usuario = request.user
+            hotel.save()
+            messages.success(request, 'Hotel modificado correctamente.')
+            return redirect('mis_hoteles')
+    else:
+        form = RegistroAlojamiento(instance=alojamiento)
+
+    return render(request, 'formulario-hotel.html', {
+        'form': form,
+        'titulo': 'Modificar hotel',
+        'boton': 'Guardar cambios',
+    })
+
+
+@login_required
+def eliminarAlojamiento(request, alojamiento_id):
+    if request.user.rol != 'P':
+        messages.warning(request, 'Solo los propietarios pueden administrar hoteles.')
+        return redirect('home')
+
+    alojamiento = get_object_or_404(
+        Alojamiento,
+        pk=alojamiento_id,
+        id_usuario=request.user,
+        tipo='HT'
+    )
+
+    if request.method == 'POST':
+        alojamiento.delete()
+        messages.success(request, 'Hotel eliminado correctamente.')
+        return redirect('mis_hoteles')
+
+    return render(request, 'confirmar-eliminacion.html', {
+        'titulo': 'Eliminar hotel',
+        'objeto': alojamiento.nombre,
+        'cancelar_url': 'mis_hoteles',
+    })
+
+
+@login_required
+def registroHabitacion(request, alojamiento_id):
+    if request.user.rol != 'P':
+        messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
+        return redirect('home')
+
+    alojamiento = get_object_or_404(
+        Alojamiento,
+        pk=alojamiento_id,
+        id_usuario=request.user,
+        tipo='HT'
+    )
+
+    if request.method == 'POST':
+        form = HabitacionForm(request.POST)
+
+        if form.is_valid():
+            habitacion = form.save(commit=False)
+            habitacion.id_alohamiento = alojamiento
+            habitacion.id_usuario = request.user
+            habitacion.save()
+            messages.success(request, 'Habitacion registrada correctamente.')
+            return redirect('mis_hoteles')
+    else:
+        form = HabitacionForm()
+
+    return render(request, 'formulario-habitacion.html', {
+        'form': form,
+        'alojamiento': alojamiento,
+        'titulo': 'Agregar habitacion',
+        'boton': 'Registrar habitacion',
+    })
+
+
+@login_required
+def modificarHabitacion(request, habitacion_id):
+    if request.user.rol != 'P':
+        messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
+        return redirect('home')
+
+    habitacion = get_object_or_404(
+        Habitacion,
+        pk=habitacion_id,
+        id_usuario=request.user,
+        id_alohamiento__id_usuario=request.user,
+        id_alohamiento__tipo='HT'
+    )
+
+    if request.method == 'POST':
+        form = HabitacionForm(request.POST, instance=habitacion)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Habitacion modificada correctamente.')
+            return redirect('mis_hoteles')
+    else:
+        form = HabitacionForm(instance=habitacion)
+
+    return render(request, 'formulario-habitacion.html', {
+        'form': form,
+        'alojamiento': habitacion.id_alohamiento,
+        'titulo': 'Modificar habitacion',
+        'boton': 'Guardar cambios',
+    })
+
+
+@login_required
+def eliminarHabitacion(request, habitacion_id):
+    if request.user.rol != 'P':
+        messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
+        return redirect('home')
+
+    habitacion = get_object_or_404(
+        Habitacion,
+        pk=habitacion_id,
+        id_usuario=request.user,
+        id_alohamiento__id_usuario=request.user,
+        id_alohamiento__tipo='HT'
+    )
+
+    if request.method == 'POST':
+        habitacion.delete()
+        messages.success(request, 'Habitacion eliminada correctamente.')
+        return redirect('mis_hoteles')
+
+    return render(request, 'confirmar-eliminacion.html', {
+        'titulo': 'Eliminar habitacion',
+        'objeto': f'Habitacion {habitacion.numero_habitacion}',
+        'cancelar_url': 'mis_hoteles',
+    })
+
+
+@login_required
 def solicitudPropietario(request):
-    if request.user.rol in ['P', 'A']:
+    if request.user.rol == 'P':
         messages.info(request, 'Tu usuario ya puede registrar alojamientos.')
-        return redirect('alojamientos')
+        return redirect('mis_hoteles')
+
+    if request.user.rol == 'A':
+        messages.info(request, 'Tu usuario administrador no necesita solicitar rol propietario.')
+        return redirect('home')
 
     solicitud_pendiente = SolicitudPropietario.objects.filter(
         usuario=request.user,

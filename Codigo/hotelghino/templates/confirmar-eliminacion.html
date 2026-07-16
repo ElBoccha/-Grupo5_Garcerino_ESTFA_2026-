@@ -5,21 +5,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro</title>
+    <title>{{ titulo }}</title>
     <link rel="stylesheet" href="{% static 'css/style4.css' %}">
 </head>
 <body>
     <main class="panel-configuracion">
-        <h1>Crear cuenta</h1>
+        <h1>{{ titulo }}</h1>
+        <p>Estas seguro de que queres eliminar "{{ objeto }}"?</p>
 
-        <form method="POST" class="formulario-usuario">
+        <form method="POST" class="acciones">
             {% csrf_token %}
-            {{ form.as_p }}
-
-            <button type="submit">Registrarse</button>
+            <button class="boton-peligro" type="submit">Eliminar</button>
+            <a class="boton-secundario" href="{% url cancelar_url %}">Cancelar</a>
         </form>
-
-        <a href="{% url 'login' %}">Volver al login</a>
     </main>
 </body>
 </html>

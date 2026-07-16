@@ -5,21 +5,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro</title>
+    <title>Configuracion</title>
     <link rel="stylesheet" href="{% static 'css/style4.css' %}">
 </head>
 <body>
     <main class="panel-configuracion">
-        <h1>Crear cuenta</h1>
+        <h1>Configuracion</h1>
 
-        <form method="POST" class="formulario-usuario">
-            {% csrf_token %}
-            {{ form.as_p }}
-
-            <button type="submit">Registrarse</button>
-        </form>
-
-        <a href="{% url 'login' %}">Volver al login</a>
+        <div class="menu-configuracion">
+            <a class="boton-principal" href="{% url 'modificar_usuario' %}">Modificar datos del usuario</a>
+            <a href="{% url 'home' %}">Volver al inicio</a>
+        </div>
     </main>
 </body>
 </html>

@@ -1,22 +1,44 @@
-<h2>Login</h2>
+{% load static %}
 
-<br>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
+</head>
+<body>
+    <main class="panel-configuracion">
+        <h1>Login</h1>
 
-<form action="" method="post">
+        {% if messages %}
+            <div class="mensajes">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
 
-    {% csrf_token %}
+        <form action="" method="post" class="formulario-usuario">
+            {% csrf_token %}
 
-    <input type="text" name="username" id="" placeholder="Nombre de Usuario">
-    <br>
-    <input type="password" name="password" id="" placeholder="Contraseña">
+            <label>
+                Nombre de Usuario
+                <input type="text" name="username" placeholder="Nombre de Usuario">
+            </label>
+            <label>
+                Contrasena
+                <input type="password" name="password" placeholder="Contrasena">
+            </label>
 
-    <br>
-    <button type="submit">Iniciar Sesión</button>
-    <br>
-    <a href="{% url 'registro' %}">Registrarse</a>
+            <button type="submit">Iniciar Sesion</button>
+            <a href="{% url 'registro' %}">Registrarse</a>
 
-    {% if error %}
-        <p>{{ error }}</p>
-    {% endif %}
-
-</form>
+            {% if error %}
+                <p>{{ error }}</p>
+            {% endif %}
+        </form>
+    </main>
+</body>
+</html>

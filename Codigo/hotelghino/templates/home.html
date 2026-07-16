@@ -1,7 +1,7 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,71 +12,99 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header class="header"></header>
-<div class="logo-titulo">
-    <img src="logo.png" alt="logo" class="logo">
-    <h1>Hotelghino</h1>
-    <input type="text" placeholder="Donde vamos?">
-    <label>Destino</label>
-    <input type="date">
-    <label>Cuando queres reservar?</label>
-    <input type="date">
-    <label>Hasta que dia queres reservar?</label>
-    <button type="submit">Buscar</button>
+    <header class="logo-titulo">
+        <a class="marca" href="{% url 'home' %}">
+            <span class="logo">Hg</span>
+            <span>Hotelghino</span>
+        </a>
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+        <nav class="nav-home">
+            <a class="boton-secundario" href="{% url 'configuracion' %}">Configuracion</a>
 
-    {% if user.rol == 'P' or user.rol == 'A' %}
-        <a href="{% url 'alojamientos' %}">Registrar alojamiento</a>
-    {% else %}
-        <a href="{% url 'propietario' %}">Queres registrar tu alojamiento?</a>
-    {% endif %}
-</div>
-    <h2>Encontra tu proximo Hotel</h2>
-<div class="Bordes">
-    <h3>Mar Del Plata</h3>
+            {% if user.rol == 'P' or user.rol == 'A' %}
+                <a class="boton-principal" href="{% url 'registro_hoteles' %}">Registrar alojamiento</a>
+                <a class="boton-secundario" href="{% url 'mis_hoteles' %}">Mis hoteles</a>
+            {% else %}
+                <a class="boton-principal" href="{% url 'propietario' %}">Queres registrar tu alojamiento?</a>
+            {% endif %}
+        </nav>
+    </header>
 
-<div class="hoteles1">
-    <div class="card">
-        <img src="imagen1.png" alt="">
-        <a href=""><b>La Bancaria Hotel Mdp Mar del Plata</b></a>
-        <p>Precio por una semana</p>
-    </div>
-    <div class="card">
-        <img src="imagen2.png" alt="">
-        <a href=""><b>O2 Hotel Mar del Plata</b></a>
-        <p>Precio por una semana</p>
-    </div>
-    <div class="card">
-        <img src="imagen4.png" alt="">
-        <a href=""><b>Grand Hotel Mar del Plata</b></a>
-        <p>Precio por una semana</p>
-    </div>
-</div>
-    <h3>Pinamar</h3>
-<div class="hoteles1">
-    <div class="card">
-        <img src="imagen5.png" alt="">
-        <a href=""><b>Hotel Arenas</b></a>
-        <p>Precio por una semana</p>
-    </div>
+    <main>
+        <section class="buscador">
+            <div>
+                <h1>Hoteles de todo el mundo para todos</h1>
+                <p>Encontra tu proximo hotel y reserva las fechas que necesitas.</p>
+            </div>
 
-    <div class="card">
-        <img src="imagen6.png" alt="">
-        <a href=""><b>Garden Suites Pinamar</b></a>
-        <p>Precio por una semana</p>
-    </div>
+            <form class="formulario-busqueda" method="get">
+                <label>
+                    Destino
+                    <input type="text" name="destino" placeholder="Donde vamos?">
+                </label>
+                <label>
+                    Desde
+                    <input type="date" name="desde">
+                </label>
+                <label>
+                    Hasta
+                    <input type="date" name="hasta">
+                </label>
+                <button type="submit">Buscar</button>
+            </form>
+        </section>
 
-    <div class="card">
-        <img src="imagen7.png" alt="">
-        <a href=""><b>Grand Hotel Mar del Plata</b></a>
-        <p>Precio por una semana</p>
-    </div>
-</div>
-</div>
+        {% if messages %}
+            <section class="mensajes">
+                {% for message in messages %}
+                    <p>{{ message }}</p>
+                {% endfor %}
+            </section>
+        {% endif %}
+
+        <section class="Bordes">
+            <h2>Encontra tu proximo Hotel</h2>
+
+            <h3>Mar Del Plata</h3>
+            <div class="hoteles1">
+                <article class="card">
+                    <div class="card-media card-media--mar"></div>
+                    <a href=""><b>La Bancaria Hotel Mdp Mar del Plata</b></a>
+                    <p>Precio por una semana</p>
+                </article>
+                <article class="card">
+                    <div class="card-media card-media--ciudad"></div>
+                    <a href=""><b>O2 Hotel Mar del Plata</b></a>
+                    <p>Precio por una semana</p>
+                </article>
+                <article class="card">
+                    <div class="card-media card-media--hotel"></div>
+                    <a href=""><b>Grand Hotel Mar del Plata</b></a>
+                    <p>Precio por una semana</p>
+                </article>
+            </div>
+
+            <h3>Pinamar</h3>
+            <div class="hoteles1">
+                <article class="card">
+                    <div class="card-media card-media--playa"></div>
+                    <a href=""><b>Hotel Arenas</b></a>
+                    <p>Precio por una semana</p>
+                </article>
+
+                <article class="card">
+                    <div class="card-media card-media--bosque"></div>
+                    <a href=""><b>Garden Suites Pinamar</b></a>
+                    <p>Precio por una semana</p>
+                </article>
+
+                <article class="card">
+                    <div class="card-media card-media--pileta"></div>
+                    <a href=""><b>Grand Hotel Mar del Plata</b></a>
+                    <p>Precio por una semana</p>
+                </article>
+            </div>
+        </section>
+    </main>
 </body>
 </html>
