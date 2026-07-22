@@ -54,7 +54,7 @@ if 'runserver' in sys.argv:
 
 ALLOWED_HOSTS = env_list(
     'ALLOWED_HOSTS',
-    'localhost,127.0.0.1,.onrender.com',
+    'localhost,127.0.0.1,.onrender.com,*',
 )
 
 CSRF_TRUSTED_ORIGINS = env_list(
@@ -77,6 +77,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
