@@ -19,6 +19,12 @@ class RegistroUsuario(UserCreationForm):
             'password1',
             'password2'
         ]
+        labels = {
+            'username': 'Nombre de usuario',
+            'email': 'Email',
+            'dni': 'DNI',
+            'telefono': 'Telefono',
+        }
 
 
 class ModificarUsuarioForm(forms.ModelForm):
@@ -88,11 +94,23 @@ class RegistroAlojamiento(forms.ModelForm):
             "descripcion": "Descripcion",
         }
         widgets = {
-            "descripcion": forms.Textarea(attrs={"rows": 4}),
+            "descripcion": forms.Textarea(attrs={
+                "rows": 4,
+                "placeholder": "Servicios, ubicacion, comodidades principales...",
+            }),
         }
 
 
 class HabitacionForm(forms.ModelForm):
+    TIPOS_HABITACION = (
+        ('Simple', 'Simple'),
+        ('Doble', 'Doble'),
+        ('Triple', 'Triple'),
+        ('Suite', 'Suite'),
+        ('Familiar', 'Familiar'),
+    )
+
+    tipo = forms.ChoiceField(choices=TIPOS_HABITACION, label='Tipo de habitacion')
 
     class Meta:
         model = Habitacion
@@ -111,6 +129,21 @@ class HabitacionForm(forms.ModelForm):
             "precio_noche": "Precio por noche",
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        for field in ['numero_habitacion', 'numero_piso', 'capacidad_maxima', 'precio_noche']:
+            value = cleaned_data.get(field)
+            if value is not None and value < 0:
+                self.add_error(field, 'El valor no puede ser negativo.')
+
+        if cleaned_data.get('capacidad_maxima') == 0:
+            self.add_error('capacidad_maxima', 'La capacidad debe ser mayor a cero.')
+
+        if cleaned_data.get('precio_noche') == 0:
+            self.add_error('precio_noche', 'El precio debe ser mayor a cero.')
+
+        return cleaned_data
+
 
 class SolicitudPropietarioForm(forms.ModelForm):
 
@@ -119,3 +152,12 @@ class SolicitudPropietarioForm(forms.ModelForm):
         fields = [
             "motivo",
         ]
+        labels = {
+            "motivo": "Motivo de la solicitud",
+        }
+        widgets = {
+            "motivo": forms.Textarea(attrs={
+                "rows": 5,
+                "placeholder": "Conta que tipo de alojamiento queres registrar.",
+            }),
+        }

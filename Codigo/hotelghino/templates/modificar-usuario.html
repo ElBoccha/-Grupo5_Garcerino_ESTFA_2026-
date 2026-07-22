@@ -1,25 +1,21 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modificar datos</title>
-    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
-</head>
-<body>
-    <main class="panel-configuracion">
+{% block title %}Modificar datos - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="page-narrow">
+    <section class="panel">
+        <p class="eyebrow">Cuenta</p>
         <h1>Modificar datos del usuario</h1>
 
-        <form method="POST" class="formulario-usuario">
+        <form method="post" class="form-stack">
             {% csrf_token %}
             {{ form.as_p }}
 
-            <button type="submit">Guardar cambios</button>
+            <button class="button button-primary" type="submit">Guardar cambios</button>
         </form>
 
-        <a href="{% url 'configuracion' %}">Volver a configuracion</a>
-    </main>
-</body>
-</html>
+        <p class="panel-footer"><a href="{% url 'configuracion' %}">Volver a configuracion</a></p>
+    </section>
+</main>
+{% endblock %}

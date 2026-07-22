@@ -1,50 +1,47 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis hoteles</title>
-    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
-</head>
-<body>
-    <main class="panel-gestion">
-        <div class="encabezado-gestion">
+{% block title %}Mis hoteles - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="page">
+    <section class="section-heading">
+        <div>
+            <p class="eyebrow">Panel propietario</p>
             <h1>Mis hoteles</h1>
-            <a class="boton-principal" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
+            <p>Alta, modificacion y eliminacion de hoteles y habitaciones.</p>
         </div>
+        <a class="button button-primary" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
+    </section>
 
-        {% if messages %}
-            {% for message in messages %}
-                <p>{{ message }}</p>
-            {% endfor %}
-        {% endif %}
-
-        {% if alojamientos %}
-            <section class="lista-hoteles">
-                {% for alojamiento in alojamientos %}
-                    <article class="hotel-gestion">
-                        <div class="hotel-gestion__cabecera">
-                            <div>
-                                <h2>{{ alojamiento.nombre }}</h2>
-                                <p>{{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
-                                <p>{{ alojamiento.descripcion }}</p>
-                            </div>
-
-                            <div class="acciones">
-                                <a class="boton-secundario" href="{% url 'modificar_hotel' alojamiento.id %}">Modificar</a>
-                                <a class="boton-peligro" href="{% url 'eliminar_hotel' alojamiento.id %}">Eliminar</a>
-                            </div>
+    {% if alojamientos %}
+        <section class="management-list">
+            {% for alojamiento in alojamientos %}
+                <article class="management-card">
+                    <div class="management-header">
+                        <div>
+                            <p class="status-pill">{{ alojamiento.get_estado_display }}</p>
+                            <h2>{{ alojamiento.nombre }}</h2>
+                            <p>{{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
+                            <p>{{ alojamiento.descripcion }}</p>
                         </div>
 
-                        <div class="habitaciones-gestion">
-                            <div class="encabezado-habitaciones">
-                                <h3>Habitaciones</h3>
-                                <a class="boton-secundario" href="{% url 'registrar_habitacion' alojamiento.id %}">Agregar habitacion</a>
-                            </div>
+                        <div class="actions">
+                            <a class="button button-secondary" href="{% url 'modificar_hotel' alojamiento.id %}">Modificar</a>
+                            <a class="button button-danger" href="{% url 'eliminar_hotel' alojamiento.id %}">Eliminar</a>
+                        </div>
+                    </div>
 
-                            {% if alojamiento.habitacion_set.all %}
+                    <div class="rooms-block">
+                        <div class="rooms-heading">
+                            <div>
+                                <h3>Habitaciones</h3>
+                                <p>{{ alojamiento.habitacion_set.count }} cargadas</p>
+                            </div>
+                            <a class="button button-secondary" href="{% url 'registrar_habitacion' alojamiento.id %}">Agregar habitacion</a>
+                        </div>
+
+                        {% if alojamiento.habitacion_set.all %}
+                            <div class="table-wrap">
                                 <table>
                                     <thead>
                                         <tr>
@@ -64,26 +61,32 @@
                                                 <td>{{ habitacion.capacidad_maxima }}</td>
                                                 <td>{{ habitacion.tipo }}</td>
                                                 <td>${{ habitacion.precio_noche }}</td>
-                                                <td class="acciones-tabla">
-                                                    <a href="{% url 'modificar_habitacion' habitacion.id %}">Modificar</a>
-                                                    <a href="{% url 'eliminar_habitacion' habitacion.id %}">Eliminar</a>
+                                                <td>
+                                                    <div class="table-actions">
+                                                        <a href="{% url 'modificar_habitacion' habitacion.id %}">Modificar</a>
+                                                        <a href="{% url 'eliminar_habitacion' habitacion.id %}">Eliminar</a>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
-                            {% else %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state compact">
                                 <p>Todavia no registraste habitaciones para este hotel.</p>
-                            {% endif %}
-                        </div>
-                    </article>
-                {% endfor %}
-            </section>
-        {% else %}
-            <p>Todavia no registraste hoteles.</p>
-        {% endif %}
-
-        <a href="{% url 'home' %}">Volver al inicio</a>
-    </main>
-</body>
-</html>
+                            </div>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+        </section>
+    {% else %}
+        <section class="empty-state">
+            <h3>Todavia no registraste hoteles</h3>
+            <p>Cuando cargues uno, lo vas a poder editar y sumar habitaciones desde este panel.</p>
+            <a class="button button-primary" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}

@@ -49,11 +49,21 @@ El proyecto Django esta dentro de la carpeta `Codigo`.
 
 La pagina queda disponible en `http://127.0.0.1:8000/`.
 
+Tambien podes usar el iniciador del proyecto:
+
+```powershell
+.\Codigo\iniciar_servidor_actual.bat
+```
+
+Ese archivo abre Django en `http://127.0.0.1:8020/` por defecto. Si `8000` muestra una version vieja, casi siempre significa que quedo otro servidor anterior abierto o que se esta ejecutando desde una carpeta distinta. La version correcta del proyecto es la que esta en `Codigo`.
+
 Nota: no uses la carpeta `Codigo/venv` que quedo en el repositorio, porque fue creada en Linux y no funciona bien en Windows. Crea un entorno nuevo con los pasos de arriba.
 
 ## Deploy en Render
 
 El repositorio incluye `render.yaml` para crear el servicio desde Render Blueprint.
+
+Importante: Render solo despliega lo que esta subido a GitHub en la rama conectada. Si localmente se ve el diseno nuevo pero Render muestra el viejo, primero hay que confirmar que los cambios de `Codigo/hotelghino/templates`, `Codigo/hotelghino/static/css/style4.css`, `Codigo/hotelghino/views.py` y `render.yaml` esten commiteados y pusheados.
 
 Si lo configuras manualmente en Render:
 

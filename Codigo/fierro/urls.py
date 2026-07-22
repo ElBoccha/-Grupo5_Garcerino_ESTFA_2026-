@@ -21,6 +21,7 @@ from hotelghino import views
 urlpatterns = [
     path('', views.login_view, name='login'),
     path('home/', views.home, name='home'),
+    path('logout/', views.logout_view, name='logout'),
     path('registro/', views.registro, name='registro'),
     path('configuracion/', views.configuracion, name='configuracion'),
     path('configuracion/modificar-usuario/', views.modificarUsuario, name='modificar_usuario'),

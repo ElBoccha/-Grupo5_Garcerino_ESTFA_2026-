@@ -1,21 +1,21 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuracion</title>
-    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
-</head>
-<body>
-    <main class="panel-configuracion">
+{% block title %}Configuracion - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="page-narrow">
+    <section class="panel">
+        <p class="eyebrow">Cuenta</p>
         <h1>Configuracion</h1>
+        <p>Administra tus datos personales y el acceso a la plataforma.</p>
 
-        <div class="menu-configuracion">
-            <a class="boton-principal" href="{% url 'modificar_usuario' %}">Modificar datos del usuario</a>
+        <div class="action-list">
+            <a class="button button-primary" href="{% url 'modificar_usuario' %}">Modificar datos del usuario</a>
+            {% if user.rol == 'H' %}
+                <a class="button button-secondary" href="{% url 'propietario' %}">Solicitar rol propietario</a>
+            {% endif %}
             <a href="{% url 'home' %}">Volver al inicio</a>
         </div>
-    </main>
-</body>
-</html>
+    </section>
+</main>
+{% endblock %}

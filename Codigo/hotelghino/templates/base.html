@@ -1,0 +1,52 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Hotelghino{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
+</head>
+<body>
+    <header class="app-header">
+        <a class="brand" href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{% url 'login' %}{% endif %}">
+            <span class="brand-mark">Hg</span>
+            <span class="brand-name">Hotelghino</span>
+        </a>
+
+        <nav class="top-nav" aria-label="Navegacion principal">
+            {% if user.is_authenticated %}
+                <a href="{% url 'home' %}">Inicio</a>
+                {% if user.rol == 'P' or user.rol == 'A' %}
+                    <a href="{% url 'mis_hoteles' %}">Mis hoteles</a>
+                    <a class="button button-primary" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
+                {% else %}
+                    <a class="button button-primary" href="{% url 'propietario' %}">Ser propietario</a>
+                {% endif %}
+                <a href="{% url 'configuracion' %}">Configuracion</a>
+                <form class="logout-form" method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button class="link-button" type="submit">Salir</button>
+                </form>
+            {% else %}
+                <a href="{% url 'login' %}">Ingresar</a>
+                <a class="button button-primary" href="{% url 'registro' %}">Crear cuenta</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    {% if messages %}
+        <section class="messages" aria-label="Mensajes del sistema">
+            {% for message in messages %}
+                <p class="message message-{{ message.tags|default:'info' }}">{{ message }}</p>
+            {% endfor %}
+        </section>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</body>
+</html>
