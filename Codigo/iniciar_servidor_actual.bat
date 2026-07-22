@@ -3,8 +3,10 @@ setlocal
 
 cd /d "%~dp0"
 
-set "PORT=8020"
+set "PORT=8000"
 if not "%~1"=="" set "PORT=%~1"
+
+for /f %%P in ('powershell -NoProfile -Command "$p=%PORT%; while (Get-NetTCPConnection -LocalPort $p -ErrorAction SilentlyContinue) { $p++ }; $p"') do set "PORT=%%P"
 
 set "PYTHON_EXE=.venv\Scripts\python.exe"
 if not exist "%PYTHON_EXE%" set "PYTHON_EXE=python"

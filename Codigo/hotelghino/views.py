@@ -1,5 +1,6 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -45,7 +46,37 @@ def login_view(request):
 
 @login_required
 def home(request):
-    return render(request, 'home.html')
+    destino = request.GET.get('destino', '').strip()
+    desde = request.GET.get('desde', '').strip()
+    hasta = request.GET.get('hasta', '').strip()
+
+    alojamientos = Alojamiento.objects.filter(estado='A').prefetch_related(
+        'habitacion_set'
+    ).order_by('-fecha_creacion')
+
+    if destino:
+        alojamientos = alojamientos.filter(
+            Q(nombre__icontains=destino) |
+            Q(calle__icontains=destino) |
+            Q(descripcion__icontains=destino)
+        )
+
+    return render(request, 'home.html', {
+        'alojamientos': alojamientos,
+        'destino': destino,
+        'desde': desde,
+        'hasta': hasta,
+    })
+
+
+@login_required
+def logout_view(request):
+    if request.method == 'POST':
+        logout(request)
+        messages.success(request, 'Sesion cerrada correctamente.')
+        return redirect('login')
+
+    return redirect('home')
 
 
 @login_required
@@ -74,7 +105,7 @@ def modificarUsuario(request):
 
 @login_required
 def registroAlojamiento(request):
-    if request.user.rol != 'P':
+    if request.user.rol not in ['P', 'A']:
         messages.warning(request, 'Primero tenes que solicitar ser propietario y esperar la aprobacion.')
         return redirect('propietario')
 
@@ -86,7 +117,7 @@ def registroAlojamiento(request):
             alojamiento.tipo = 'HT'
             alojamiento.id_usuario = request.user
             alojamiento.save()
-            messages.success(request, 'Hotel registrado correctamente.')
+            messages.success(request, 'Hotel registrado correctamente. Ya podes cargar sus habitaciones.')
             return redirect('mis_hoteles')
     else:
         form = RegistroAlojamiento()
@@ -96,7 +127,7 @@ def registroAlojamiento(request):
 
 @login_required
 def misHoteles(request):
-    if request.user.rol != 'P':
+    if request.user.rol not in ['P', 'A']:
         messages.warning(request, 'Solo los propietarios pueden administrar hoteles.')
         return redirect('home')
 
@@ -110,7 +141,7 @@ def misHoteles(request):
 
 @login_required
 def modificarAlojamiento(request, alojamiento_id):
-    if request.user.rol != 'P':
+    if request.user.rol not in ['P', 'A']:
         messages.warning(request, 'Solo los propietarios pueden administrar hoteles.')
         return redirect('home')
 
@@ -143,7 +174,7 @@ def modificarAlojamiento(request, alojamiento_id):
 
 @login_required
 def eliminarAlojamiento(request, alojamiento_id):
-    if request.user.rol != 'P':
+    if request.user.rol not in ['P', 'A']:
         messages.warning(request, 'Solo los propietarios pueden administrar hoteles.')
         return redirect('home')
 
@@ -168,7 +199,7 @@ def eliminarAlojamiento(request, alojamiento_id):
 
 @login_required
 def registroHabitacion(request, alojamiento_id):
-    if request.user.rol != 'P':
+    if request.user.rol not in ['P', 'A']:
         messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
         return redirect('home')
 
@@ -202,7 +233,7 @@ def registroHabitacion(request, alojamiento_id):
 
 @login_required
 def modificarHabitacion(request, habitacion_id):
-    if request.user.rol != 'P':
+    if request.user.rol not in ['P', 'A']:
         messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
         return redirect('home')
 
@@ -234,7 +265,7 @@ def modificarHabitacion(request, habitacion_id):
 
 @login_required
 def eliminarHabitacion(request, habitacion_id):
-    if request.user.rol != 'P':
+    if request.user.rol not in ['P', 'A']:
         messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
         return redirect('home')
 

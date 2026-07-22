@@ -1,26 +1,137 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ titulo }}</title>
-    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
-</head>
-<body>
-    <main class="panel-configuracion">
+{% block title %}{{ titulo }} - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="auth-layout auth-layout-form">
+    <section class="auth-copy">
+        <p class="eyebrow">Habitaciones — {{ alojamiento.nombre }}</p>
         <h1>{{ titulo }}</h1>
-        <p>{{ alojamiento.nombre }}</p>
+        <p>Completá los datos de la habitación. Podés agregar tantas habitaciones como necesites a tu hotel.</p>
 
-        <form method="POST" class="formulario-usuario">
+        <div class="auth-features">
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">🏷️</span>
+                <div>
+                    <strong>Tipo y número</strong>
+                    <p>Simple, doble, suite o familiar.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">👥</span>
+                <div>
+                    <strong>Capacidad</strong>
+                    <p>Indicá cuántas personas puede alojar la habitación.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">💲</span>
+                <div>
+                    <strong>Precio por noche</strong>
+                    <p>Definí el precio que verán los huéspedes.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel panel-auth">
+        <div class="panel-header">
+            <p class="eyebrow">{{ alojamiento.nombre }}</p>
+            <h2>{{ titulo }}</h2>
+        </div>
+
+        <form method="post" class="form-stack" id="form-habitacion">
             {% csrf_token %}
-            {{ form.as_p }}
 
-            <button type="submit">{{ boton }}</button>
+            <div class="form-row">
+                <label for="id_numero_habitacion">
+                    N° de habitación
+                    <input
+                        id="id_numero_habitacion"
+                        type="number"
+                        name="numero_habitacion"
+                        value="{{ form.numero_habitacion.value|default:'' }}"
+                        placeholder="101"
+                        min="0"
+                        required
+                    >
+                    {% if form.numero_habitacion.errors %}
+                        <span class="form-error">{{ form.numero_habitacion.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+
+                <label for="id_numero_piso">
+                    Piso
+                    <input
+                        id="id_numero_piso"
+                        type="number"
+                        name="numero_piso"
+                        value="{{ form.numero_piso.value|default:'' }}"
+                        placeholder="1"
+                        min="0"
+                        required
+                    >
+                    {% if form.numero_piso.errors %}
+                        <span class="form-error">{{ form.numero_piso.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+            </div>
+
+            <div class="form-row">
+                <label for="id_capacidad_maxima">
+                    Capacidad máxima
+                    <input
+                        id="id_capacidad_maxima"
+                        type="number"
+                        name="capacidad_maxima"
+                        value="{{ form.capacidad_maxima.value|default:'' }}"
+                        placeholder="2"
+                        min="1"
+                        required
+                    >
+                    {% if form.capacidad_maxima.errors %}
+                        <span class="form-error">{{ form.capacidad_maxima.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+
+                <label for="id_precio_noche">
+                    Precio por noche ($)
+                    <input
+                        id="id_precio_noche"
+                        type="number"
+                        name="precio_noche"
+                        value="{{ form.precio_noche.value|default:'' }}"
+                        placeholder="5000"
+                        min="1"
+                        required
+                    >
+                    {% if form.precio_noche.errors %}
+                        <span class="form-error">{{ form.precio_noche.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+            </div>
+
+            <label for="id_tipo_habitacion">
+                Tipo de habitación
+                <select id="id_tipo_habitacion" name="tipo" required>
+                    <option value="">— Elegí un tipo —</option>
+                    <option value="Simple" {% if form.tipo.value == "Simple" %}selected{% endif %}>Simple</option>
+                    <option value="Doble"  {% if form.tipo.value == "Doble"  %}selected{% endif %}>Doble</option>
+                    <option value="Triple" {% if form.tipo.value == "Triple" %}selected{% endif %}>Triple</option>
+                    <option value="Suite"  {% if form.tipo.value == "Suite"  %}selected{% endif %}>Suite</option>
+                    <option value="Familiar" {% if form.tipo.value == "Familiar" %}selected{% endif %}>Familiar</option>
+                </select>
+                {% if form.tipo.errors %}
+                    <span class="form-error">{{ form.tipo.errors|join:", " }}</span>
+                {% endif %}
+            </label>
+
+            <button class="button button-primary button-full" id="btn-guardar-habitacion" type="submit">
+                {{ boton }}
+            </button>
         </form>
 
-        <a href="{% url 'mis_hoteles' %}">Volver a mis hoteles</a>
-    </main>
-</body>
-</html>
+        <p class="panel-footer"><a href="{% url 'mis_hoteles' %}">← Volver a mis hoteles</a></p>
+    </section>
+</main>
+{% endblock %}

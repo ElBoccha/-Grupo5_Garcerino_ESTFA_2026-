@@ -1,44 +1,79 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
-</head>
-<body>
-    <main class="panel-configuracion">
-        <h1>Login</h1>
+{% block title %}Ingresar - Hotelghino{% endblock %}
 
-        {% if messages %}
-            <div class="mensajes">
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
+{% block content %}
+<main class="auth-layout">
+    <section class="auth-copy">
+        <p class="eyebrow">Gestión de reservas turísticas</p>
+        <h1>Hoteles de todo el mundo para todos</h1>
+        <p>Ingresá para buscar alojamientos, administrar tus hoteles o pedir acceso como propietario.</p>
+
+        <div class="auth-features">
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">🏨</span>
+                <div>
+                    <strong>Explorá hoteles</strong>
+                    <p>Buscá entre cientos de alojamientos disponibles.</p>
+                </div>
             </div>
-        {% endif %}
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">🔑</span>
+                <div>
+                    <strong>Registrá tu hotel</strong>
+                    <p>Si sos propietario, publicá y gestioná tu alojamiento.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">📅</span>
+                <div>
+                    <strong>Reservas simples</strong>
+                    <p>Encontrá disponibilidad y reservá al instante.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-        <form action="" method="post" class="formulario-usuario">
+    <section class="panel panel-auth">
+        <div class="panel-header">
+            <p class="eyebrow">Bienvenido de vuelta</p>
+            <h2>Iniciar sesión</h2>
+        </div>
+
+        <form action="" method="post" class="form-stack">
             {% csrf_token %}
 
-            <label>
-                Nombre de Usuario
-                <input type="text" name="username" placeholder="Nombre de Usuario">
+            <label for="id_username_login">
+                Nombre de usuario
+                <input
+                    id="id_username_login"
+                    type="text"
+                    name="username"
+                    placeholder="Tu usuario"
+                    autocomplete="username"
+                    required
+                >
             </label>
-            <label>
-                Contrasena
-                <input type="password" name="password" placeholder="Contrasena">
+            <label for="id_password_login">
+                Contraseña
+                <input
+                    id="id_password_login"
+                    type="password"
+                    name="password"
+                    placeholder="Tu contraseña"
+                    autocomplete="current-password"
+                    required
+                >
             </label>
-
-            <button type="submit">Iniciar Sesion</button>
-            <a href="{% url 'registro' %}">Registrarse</a>
 
             {% if error %}
-                <p>{{ error }}</p>
+                <p class="form-error form-error-box">⚠ {{ error }}</p>
             {% endif %}
+
+            <button class="button button-primary button-full" id="btn-login" type="submit">Iniciar sesión</button>
         </form>
-    </main>
-</body>
-</html>
+
+        <p class="panel-footer">¿No tenés cuenta? <a href="{% url 'registro' %}">Registrate gratis</a></p>
+    </section>
+</main>
+{% endblock %}

@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib import messages
 from django.urls import path, reverse
 from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
 from django.utils.html import format_html
 from .models import Usuario, Alojamiento, Habitacion, Promocion, SolicitudPropietario
 
@@ -85,9 +86,56 @@ class SolicitudPropietarioAdmin(admin.ModelAdmin):
         return redirect('admin:hotelghino_solicitudpropietario_changelist')
 
 class AlojamientoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'tipo', 'estado', 'id_usuario', 'fecha_creacion')
+    list_display = ('nombre', 'tipo', 'estado', 'id_usuario', 'fecha_creacion', 'acciones')
     list_filter = ('estado', 'tipo')
     search_fields = ('nombre', 'descripcion', 'id_usuario__username')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:alojamiento_id>/aprobar/',
+                self.admin_site.admin_view(self.aprobar_alojamiento),
+                name='hotelghino_alojamiento_aprobar',
+            ),
+            path(
+                '<int:alojamiento_id>/rechazar/',
+                self.admin_site.admin_view(self.rechazar_alojamiento),
+                name='hotelghino_alojamiento_rechazar',
+            ),
+        ]
+        return custom_urls + urls
+
+    def acciones(self, obj):
+        if obj.estado != 'P':
+            return obj.get_estado_display()
+
+        aprobar_url = reverse('admin:hotelghino_alojamiento_aprobar', args=[obj.pk])
+        rechazar_url = reverse('admin:hotelghino_alojamiento_rechazar', args=[obj.pk])
+
+        return format_html(
+            '<a class="button" href="{}">Aprobar</a>&nbsp;'
+            '<a class="button" href="{}">Rechazar</a>',
+            aprobar_url,
+            rechazar_url,
+        )
+
+    acciones.short_description = 'Acciones'
+
+    def aprobar_alojamiento(self, request, alojamiento_id):
+        alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id)
+        alojamiento.estado = 'A'
+        alojamiento.fecha_aprobacion = timezone.now()
+        alojamiento.save(update_fields=['estado', 'fecha_aprobacion'])
+        messages.success(request, f'Hotel "{alojamiento.nombre}" aprobado.')
+        return redirect('admin:hotelghino_alojamiento_changelist')
+
+    def rechazar_alojamiento(self, request, alojamiento_id):
+        alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id)
+        alojamiento.estado = 'R'
+        alojamiento.save(update_fields=['estado'])
+        messages.success(request, f'Hotel "{alojamiento.nombre}" rechazado.')
+        return redirect('admin:hotelghino_alojamiento_changelist')
 
 class HabitacionAdmin(admin.ModelAdmin):
     list_display = ('numero_habitacion', 'numero_piso', 'capacidad_maxima', 'tipo', 'precio_noche', 'id_alohamiento', 'id_usuario')

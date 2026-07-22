@@ -1,33 +1,115 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de hotel</title>
-    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
-</head>
-<body>
-    <main class="panel-configuracion">
-        <h1>Registrar hotel</h1>
+{% block title %}Registrar hotel - Hotelghino{% endblock %}
 
-        {% if messages %}
-            <div class="mensajes">
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
+{% block content %}
+<main class="auth-layout auth-layout-form">
+    <section class="auth-copy">
+        <p class="eyebrow">Panel propietario</p>
+        <h1>Registrá tu hotel</h1>
+        <p>Completá los datos de tu alojamiento. Una vez registrado, podrás agregar habitaciones, precios y más desde tu panel.</p>
+
+        <div class="auth-features">
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">📋</span>
+                <div>
+                    <strong>Datos básicos</strong>
+                    <p>Nombre, dirección y descripción del alojamiento.</p>
+                </div>
             </div>
-        {% endif %}
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">🛏️</span>
+                <div>
+                    <strong>Cargá habitaciones</strong>
+                    <p>Después podés sumar habitaciones con precios y capacidad.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">🌐</span>
+                <div>
+                    <strong>Publicación inmediata</strong>
+                    <p>Tu hotel queda pendiente de aprobación y luego aparece en el sitio.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-        <form method="POST" class="formulario-usuario">
+    <section class="panel panel-auth">
+        <div class="panel-header">
+            <p class="eyebrow">Nuevo alojamiento</p>
+            <h2>Registrar hotel</h2>
+        </div>
+
+        <form method="post" class="form-stack" id="form-registro-hotel">
             {% csrf_token %}
-            {{ form.as_p }}
 
-            <button type="submit">Registrar hotel</button>
+            <label for="id_nombre">
+                Nombre del hotel
+                <input
+                    id="id_nombre"
+                    type="text"
+                    name="nombre"
+                    value="{{ form.nombre.value|default:'' }}"
+                    placeholder="Ej: Hotel Costa Azul"
+                    required
+                >
+                {% if form.nombre.errors %}
+                    <span class="form-error">{{ form.nombre.errors|join:", " }}</span>
+                {% endif %}
+            </label>
+
+            <div class="form-row">
+                <label for="id_calle">
+                    Calle
+                    <input
+                        id="id_calle"
+                        type="text"
+                        name="calle"
+                        value="{{ form.calle.value|default:'' }}"
+                        placeholder="Av. Colón"
+                        required
+                    >
+                    {% if form.calle.errors %}
+                        <span class="form-error">{{ form.calle.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+
+                <label for="id_numero_calle">
+                    Número
+                    <input
+                        id="id_numero_calle"
+                        type="text"
+                        name="numero_calle"
+                        value="{{ form.numero_calle.value|default:'' }}"
+                        placeholder="1234"
+                        required
+                    >
+                    {% if form.numero_calle.errors %}
+                        <span class="form-error">{{ form.numero_calle.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+            </div>
+
+            <label for="id_descripcion">
+                Descripción
+                <textarea
+                    id="id_descripcion"
+                    name="descripcion"
+                    rows="4"
+                    placeholder="Servicios, ubicación, comodidades principales..."
+                    required
+                >{{ form.descripcion.value|default:'' }}</textarea>
+                {% if form.descripcion.errors %}
+                    <span class="form-error">{{ form.descripcion.errors|join:", " }}</span>
+                {% endif %}
+            </label>
+
+            <button class="button button-primary button-full" id="btn-registrar-hotel" type="submit">
+                Registrar hotel
+            </button>
         </form>
 
-        <a href="{% url 'home' %}">Volver al inicio</a>
-    </main>
-</body>
-</html>
+        <p class="panel-footer"><a href="{% url 'home' %}">← Volver al inicio</a></p>
+    </section>
+</main>
+{% endblock %}

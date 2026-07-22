@@ -1,25 +1,52 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro</title>
-    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
-</head>
-<body>
-    <main class="panel-configuracion">
-        <h1>Crear cuenta</h1>
+{% block title %}Crear cuenta - Hotelghino{% endblock %}
 
-        <form method="POST" class="formulario-usuario">
+{% block content %}
+<main class="auth-layout">
+    <section class="auth-copy">
+        <p class="eyebrow">Unite a Hotelghino</p>
+        <h1>Creá tu cuenta en minutos</h1>
+        <p>Registrate para comenzar a explorar hoteles, hacer reservas o publicar tu propio alojamiento.</p>
+
+        <div class="auth-features">
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">✅</span>
+                <div>
+                    <strong>100% gratuito</strong>
+                    <p>Crear una cuenta no tiene ningún costo.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">🛡️</span>
+                <div>
+                    <strong>Tus datos seguros</strong>
+                    <p>Tu información siempre está protegida.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">🚀</span>
+                <div>
+                    <strong>Acceso inmediato</strong>
+                    <p>En segundos podés empezar a buscar hoteles.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel panel-auth panel-registro">
+        <div class="panel-header">
+            <p class="eyebrow">Nueva cuenta</p>
+            <h2>Crear cuenta</h2>
+        </div>
+
+        <form method="post" class="form-stack" id="form-registro">
             {% csrf_token %}
             {{ form.as_p }}
-
-            <button type="submit">Registrarse</button>
+            <button class="button button-primary button-full" id="btn-registro" type="submit">Crear cuenta</button>
         </form>
 
-        <a href="{% url 'login' %}">Volver al login</a>
-    </main>
-</body>
-</html>
+        <p class="panel-footer">¿Ya tenés cuenta? <a href="{% url 'login' %}">Iniciá sesión</a></p>
+    </section>
+</main>
+{% endblock %}

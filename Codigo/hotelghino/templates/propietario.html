@@ -1,36 +1,79 @@
-{% load static %}
+{% extends 'base.html' %}
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitud de propietario</title>
-    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
-</head>
-<body>
-    <main class="panel-configuracion">
-        <h1>Solicitud para registrar alojamientos</h1>
+{% block title %}Solicitud de propietario - Hotelghino{% endblock %}
 
-        {% if messages %}
-            <div class="mensajes">
-                {% for message in messages %}
-                    <p>{{ message }}</p>
-                {% endfor %}
+{% block content %}
+<main class="auth-layout auth-layout-form">
+    <section class="auth-copy">
+        <p class="eyebrow">Propietarios</p>
+        <h1>Registrá tu alojamiento en Hotelghino</h1>
+        <p>Contanos por qué querés administrar hoteles. Un administrador revisará tu solicitud y te notificará.</p>
+
+        <div class="auth-features">
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">📩</span>
+                <div>
+                    <strong>Enviá tu solicitud</strong>
+                    <p>Explicá brevemente qué tipo de alojamiento tenés.</p>
+                </div>
             </div>
-        {% endif %}
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">⏳</span>
+                <div>
+                    <strong>Revisión rápida</strong>
+                    <p>Un administrador aprueba la solicitud en poco tiempo.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <span class="auth-feature-icon">🏨</span>
+                <div>
+                    <strong>Publicá tu hotel</strong>
+                    <p>Una vez aprobado, podés registrar y gestionar tu alojamiento.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel panel-auth">
+        <div class="panel-header">
+            <p class="eyebrow">Acceso propietario</p>
+            <h2>Solicitud para registrar alojamientos</h2>
+        </div>
 
         {% if solicitud_pendiente %}
-            <p>Ya tenes una solicitud pendiente de revision.</p>
-            <a href="{% url 'home' %}">Volver al inicio</a>
+            <div class="empty-state">
+                <p class="eyebrow">En revisión</p>
+                <h3>Tu solicitud está pendiente</h3>
+                <p>Ya tenés una solicitud en revisión. Te avisaremos cuando el administrador la procese.</p>
+                <a class="button button-secondary" id="btn-volver-inicio-propietario" href="{% url 'home' %}">
+                    Volver al inicio
+                </a>
+            </div>
         {% else %}
-            <form method="POST" class="formulario-usuario">
+            <form method="post" class="form-stack" id="form-solicitud-propietario">
                 {% csrf_token %}
-                {{ form.as_p }}
 
-                <button type="submit">Enviar solicitud</button>
+                <label for="id_motivo_solicitud">
+                    Motivo de la solicitud
+                    <textarea
+                        id="id_motivo_solicitud"
+                        name="motivo"
+                        rows="5"
+                        placeholder="Contá qué tipo de alojamiento querés registrar, cuántas habitaciones tiene, dónde está ubicado..."
+                        required
+                    >{{ form.motivo.value|default:'' }}</textarea>
+                    {% if form.motivo.errors %}
+                        <span class="form-error">{{ form.motivo.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+
+                <button class="button button-primary button-full" id="btn-enviar-solicitud" type="submit">
+                    Enviar solicitud
+                </button>
             </form>
         {% endif %}
-    </main>
-</body>
-</html>
+
+        <p class="panel-footer"><a href="{% url 'home' %}">← Volver al inicio</a></p>
+    </section>
+</main>
+{% endblock %}
