@@ -1,3 +1,4 @@
+from datetime import datetime, date
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import authenticate, login, logout
@@ -9,9 +10,11 @@ from .forms import ModificarUsuarioForm
 from .forms import RegistroAlojamiento
 from .forms import HabitacionForm
 from .forms import SolicitudPropietarioForm
+from .forms import ReservaForm
 from .models import Alojamiento
 from .models import Habitacion
 from .models import SolicitudPropietario
+from .models import Reserva
 
 
 def registro(request):
@@ -50,9 +53,10 @@ def home(request):
     desde = request.GET.get('desde', '').strip()
     hasta = request.GET.get('hasta', '').strip()
 
-    alojamientos = Alojamiento.objects.filter(estado='A').prefetch_related(
-        'habitacion_set'
-    ).order_by('-fecha_creacion')
+    alojamientos = Alojamiento.objects.filter(
+        Q(estado='A') | Q(estado='P'),
+        tipo='HT'
+    ).prefetch_related('habitacion_set').order_by('-fecha_creacion')
 
     if destino:
         alojamientos = alojamientos.filter(
@@ -60,6 +64,22 @@ def home(request):
             Q(calle__icontains=destino) |
             Q(descripcion__icontains=destino)
         )
+
+    if desde and hasta:
+        try:
+            d_inicio = datetime.strptime(desde, '%Y-%m-%d').date()
+            d_fin = datetime.strptime(hasta, '%Y-%m-%d').date()
+            if d_inicio < d_fin:
+                reservas_ocupadas = Reserva.objects.filter(
+                    fecha_inicio__lt=d_fin,
+                    fecha_finalizacion__gt=d_inicio
+                ).exclude(estado='Cancelada').values_list('id_habitacion_id', flat=True)
+
+                alojamientos = alojamientos.filter(
+                    Q(habitacion__isnull=True) | ~Q(habitacion__id__in=reservas_ocupadas)
+                ).distinct()
+        except ValueError:
+            pass
 
     return render(request, 'home.html', {
         'alojamientos': alojamientos,
@@ -115,6 +135,7 @@ def registroAlojamiento(request):
         if form.is_valid():
             alojamiento = form.save(commit=False)
             alojamiento.tipo = 'HT'
+            alojamiento.estado = 'A'
             alojamiento.id_usuario = request.user
             alojamiento.save()
             messages.success(request, 'Hotel registrado correctamente. Ya podes cargar sus habitaciones.')
@@ -324,3 +345,99 @@ def solicitudPropietario(request):
         'form': form,
         'solicitud_pendiente': solicitud_pendiente,
     })
+
+
+@login_required
+def detalleHotel(request, alojamiento_id):
+    alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id)
+    habitaciones = Habitacion.objects.filter(id_alohamiento=alojamiento).order_by('numero_habitacion')
+
+    desde = request.GET.get('desde', '').strip()
+    hasta = request.GET.get('hasta', '').strip()
+
+    if request.method == 'POST':
+        form = ReservaForm(request.POST)
+        form.fields['id_habitacion'].queryset = habitaciones
+
+        if form.is_valid():
+            habitacion = form.cleaned_data['id_habitacion']
+            fecha_inicio = form.cleaned_data['fecha_inicio']
+            fecha_finalizacion = form.cleaned_data['fecha_finalizacion']
+
+            if habitacion.id_alohamiento != alojamiento:
+                messages.error(request, 'La habitacion seleccionada no pertenece a este hotel.')
+                return redirect('detalle_hotel', alojamiento_id=alojamiento.id)
+
+            solapada = Reserva.objects.filter(
+                id_habitacion=habitacion,
+                fecha_inicio__lt=fecha_finalizacion,
+                fecha_finalizacion__gt=fecha_inicio
+            ).exclude(estado='Cancelada').exists()
+
+            if solapada:
+                messages.error(request, 'La habitacion seleccionada no esta disponible para las fechas ingresadas.')
+            else:
+                dias = (fecha_finalizacion - fecha_inicio).days
+                pago = dias * habitacion.precio_noche
+
+                Reserva.objects.create(
+                    fecha_inicio=fecha_inicio,
+                    fecha_finalizacion=fecha_finalizacion,
+                    estado='Confirmada',
+                    pago=pago,
+                    id_alohamiento=alojamiento,
+                    id_usuario=request.user,
+                    id_habitacion=habitacion
+                )
+                messages.success(request, f'¡Reserva confirmada en {alojamiento.nombre} para la habitacion {habitacion.numero_habitacion}! Total abonado: ${pago}.')
+                return redirect('mis_reservas')
+    else:
+        initial_data = {}
+        if desde:
+            try:
+                initial_data['fecha_inicio'] = datetime.strptime(desde, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        if hasta:
+            try:
+                initial_data['fecha_finalizacion'] = datetime.strptime(hasta, '%Y-%m-%d').date()
+            except ValueError:
+                pass
+
+        form = ReservaForm(initial=initial_data)
+        form.fields['id_habitacion'].queryset = habitaciones
+
+    return render(request, 'detalle-hotel.html', {
+        'alojamiento': alojamiento,
+        'habitaciones': habitaciones,
+        'form': form,
+        'desde': desde,
+        'hasta': hasta,
+    })
+
+
+@login_required
+def misReservas(request):
+    reservas = Reserva.objects.filter(
+        id_usuario=request.user
+    ).select_related('id_alohamiento', 'id_habitacion').order_by('-fecha_inicio')
+
+    return render(request, 'mis-reservas.html', {'reservas': reservas})
+
+
+@login_required
+def cancelarReserva(request, reserva_id):
+    reserva = get_object_or_404(Reserva, pk=reserva_id, id_usuario=request.user)
+
+    if request.method == 'POST':
+        reserva.estado = 'Cancelada'
+        reserva.save()
+        messages.success(request, 'Reserva cancelada correctamente.')
+        return redirect('mis_reservas')
+
+    return render(request, 'confirmar-eliminacion.html', {
+        'titulo': 'Cancelar reserva',
+        'objeto': f'Reserva en {reserva.id_alohamiento.nombre} ({reserva.fecha_inicio} al {reserva.fecha_finalizacion})',
+        'cancelar_url': 'mis_reservas',
+    })
+
