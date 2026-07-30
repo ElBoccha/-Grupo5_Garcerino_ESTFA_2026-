@@ -33,14 +33,15 @@
             <p class="eyebrow">Alojamientos</p>
             <h2>Hoteles disponibles</h2>
         </div>
-        {% if user.rol == 'P' or user.rol == 'A' %}
-            <div class="actions">
+        <div class="actions">
+            <a class="button button-secondary" href="{% url 'mis_reservas' %}">Mis reservas</a>
+            {% if user.rol == 'P' or user.rol == 'A' %}
                 <a class="button button-primary" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
                 <a class="button button-secondary" href="{% url 'mis_hoteles' %}">Administrar mis hoteles</a>
-            </div>
-        {% else %}
-            <a class="button button-secondary" href="{% url 'propietario' %}">Solicitar ser propietario</a>
-        {% endif %}
+            {% else %}
+                <a class="button button-secondary" href="{% url 'propietario' %}">Solicitar ser propietario</a>
+            {% endif %}
+        </div>
     </section>
 
     {% if alojamientos %}
@@ -56,6 +57,9 @@
                         <div class="card-meta">
                             <span>{{ alojamiento.habitacion_set.count }} habitaciones</span>
                             <span>{{ alojamiento.get_tipo_display }}</span>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <a class="button button-primary" style="width: 100%;" href="{% url 'detalle_hotel' alojamiento.id %}{% if desde or hasta %}?desde={{ desde }}&hasta={{ hasta }}{% endif %}">Ver hotel y reservar</a>
                         </div>
                     </div>
                 </article>

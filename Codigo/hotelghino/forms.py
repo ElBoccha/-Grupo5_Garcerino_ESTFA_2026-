@@ -6,6 +6,7 @@ from .models import Usuario
 from .models import Alojamiento
 from .models import Habitacion
 from .models import SolicitudPropietario
+from .models import Reserva
 
 class RegistroUsuario(UserCreationForm):
 
@@ -161,3 +162,37 @@ class SolicitudPropietarioForm(forms.ModelForm):
                 "placeholder": "Conta que tipo de alojamiento queres registrar.",
             }),
         }
+
+
+class ReservaForm(forms.ModelForm):
+    fecha_inicio = forms.DateField(
+        label='Fecha de ingreso',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+    fecha_finalizacion = forms.DateField(
+        label='Fecha de salida',
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
+
+    class Meta:
+        model = Reserva
+        fields = ['id_habitacion', 'fecha_inicio', 'fecha_finalizacion']
+        labels = {
+            'id_habitacion': 'Habitacion',
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_finalizacion = cleaned_data.get('fecha_finalizacion')
+
+        if fecha_inicio and fecha_finalizacion:
+            if fecha_inicio >= fecha_finalizacion:
+                self.add_error('fecha_finalizacion', 'La fecha de salida debe ser posterior a la fecha de ingreso.')
+
+            from django.utils import timezone
+            if fecha_inicio < timezone.now().date():
+                self.add_error('fecha_inicio', 'La fecha de ingreso no puede ser anterior a hoy.')
+
+        return cleaned_data
+

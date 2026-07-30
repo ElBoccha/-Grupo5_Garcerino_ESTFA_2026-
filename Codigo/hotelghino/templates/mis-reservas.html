@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Mis reservas - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="page">
+    <section class="section-heading">
+        <div>
+            <p class="eyebrow">Mi Cuenta</p>
+            <h1>Mis reservas</h1>
+            <p>Consulta y administra tus reservas de hospedaje.</p>
+        </div>
+        <a class="button button-primary" href="{% url 'home' %}">Buscar mas hoteles</a>
+    </section>
+
+    {% if reservas %}
+        <section class="management-list">
+            {% for reserva in reservas %}
+                <article class="management-card">
+                    <div class="management-header">
+                        <div>
+                            <p class="status-pill">{{ reserva.estado }}</p>
+                            <h2>{{ reserva.id_alohamiento.nombre }}</h2>
+                            <p>{{ reserva.id_alohamiento.calle }} {{ reserva.id_alohamiento.numero_calle }}</p>
+                        </div>
+                        {% if reserva.estado != 'Cancelada' %}
+                            <div class="actions">
+                                <a class="button button-danger" href="{% url 'cancelar_reserva' reserva.id %}">Cancelar reserva</a>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Habitacion</th>
+                                    <th>Tipo</th>
+                                    <th>Ingreso</th>
+                                    <th>Salida</th>
+                                    <th>Total Pago</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>N° {{ reserva.id_habitacion.numero_habitacion }} (Piso {{ reserva.id_habitacion.numero_piso }})</td>
+                                    <td>{{ reserva.id_habitacion.tipo }}</td>
+                                    <td>{{ reserva.fecha_inicio|date:"d/m/Y" }}</td>
+                                    <td>{{ reserva.fecha_finalizacion|date:"d/m/Y" }}</td>
+                                    <td><strong>${{ reserva.pago }}</strong></td>
+                                    <td>
+                                        {% if reserva.estado == 'Cancelada' %}
+                                            <span style="color: var(--red); font-weight: 700;">Cancelada</span>
+                                        {% else %}
+                                            <span style="color: var(--green); font-weight: 700;">Confirmada</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            {% endfor %}
+        </section>
+    {% else %}
+        <section class="empty-state">
+            <h3>Todavia no realizaste ninguna reserva</h3>
+            <p>Explora los hoteles disponibles en la pagina principal y realiza tu primera reserva.</p>
+            <a class="button button-primary" href="{% url 'home' %}">Buscar hoteles</a>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}

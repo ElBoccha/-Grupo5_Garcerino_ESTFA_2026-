@@ -72,14 +72,17 @@ class Habitacion(models.Model):
 
 
 class Reserva(models.Model):
-    fecha_inico = models.DateField()
-    fecha_finalización = models.DateField()
-    estado = models.CharField(max_length = 20)
+    fecha_inicio = models.DateField()
+    fecha_finalizacion = models.DateField()
+    estado = models.CharField(max_length = 20, default='Confirmada')
     pago = models.IntegerField()
     id_alohamiento = models.ForeignKey(Alojamiento, on_delete = models.CASCADE)
     id_usuario = models.ForeignKey(Usuario, on_delete = models.CASCADE)
     id_habitacion = models.ForeignKey(Habitacion, on_delete = models.CASCADE)
-   
+
+    def __str__(self):
+        return f"Reserva {self.id} - {self.id_alohamiento.nombre} ({self.id_usuario.username})"
+
 
 class Promocion(models.Model):
     descuento = models.IntegerField()
@@ -94,7 +97,7 @@ class Promocion(models.Model):
 
 class Reseña(models.Model):
     calificacion = models.IntegerField()
-    descripción = models.TextField()
+    descripcion = models.TextField()
     id_alohamiento = models.ForeignKey(Alojamiento, on_delete = models.CASCADE)
     id_usuario = models.ForeignKey(Usuario, on_delete = models.CASCADE)
 

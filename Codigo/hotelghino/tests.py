@@ -64,3 +64,78 @@ class UsuarioViewsTest(TestCase):
         self.assertEqual(usuario.email, 'editado@example.com')
         self.assertEqual(usuario.dni, 87654321)
         self.assertEqual(usuario.telefono, '1199887766')
+
+
+class HotelReservaViewsTest(TestCase):
+    def setUp(self):
+        self.propietario = Usuario.objects.create_user(
+            username='prop1',
+            password='Password123',
+            dni=11111111,
+            telefono='111111111',
+            rol='P'
+        )
+        self.huesped = Usuario.objects.create_user(
+            username='huesped1',
+            password='Password123',
+            dni=22222222,
+            telefono='222222222',
+            rol='H'
+        )
+
+    def test_propietario_registra_hotel_y_aparece_en_home(self):
+        self.client.force_login(self.propietario)
+        response = self.client.post(reverse('registro_hoteles'), {
+            'nombre': 'Grand Hotel Test',
+            'calle': 'Av. Principal',
+            'numero_calle': '123',
+            'descripcion': 'Un hotel excelente cerca de la playa.',
+        })
+        self.assertRedirects(response, reverse('mis_hoteles'))
+
+        # Verificar que aparece en home
+        self.client.force_login(self.huesped)
+        home_resp = self.client.get(reverse('home'))
+        self.assertContains(home_resp, 'Grand Hotel Test')
+
+    def test_reserva_hotel_y_ver_en_mis_reservas(self):
+        # Crear hotel y habitacion
+        from hotelghino.models import Alojamiento, Habitacion, Reserva
+        from datetime import date, timedelta
+
+        hotel = Alojamiento.objects.create(
+            nombre='Hotel Plaza',
+            calle='Calle Sol',
+            numero_calle='456',
+            descripcion='Hotel céntrico',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+        hab = Habitacion.objects.create(
+            numero_habitacion=101,
+            numero_piso=1,
+            capacidad_maxima=2,
+            tipo='Doble',
+            precio_noche=5000,
+            id_alohamiento=hotel,
+            id_usuario=self.propietario
+        )
+
+        self.client.force_login(self.huesped)
+        today = date.today()
+        d_inicio = today + timedelta(days=5)
+        d_fin = today + timedelta(days=8)
+
+        response = self.client.post(reverse('detalle_hotel', args=[hotel.id]), {
+            'id_habitacion': hab.id,
+            'fecha_inicio': d_inicio.strftime('%Y-%m-%d'),
+            'fecha_finalizacion': d_fin.strftime('%Y-%m-%d'),
+        })
+
+        self.assertRedirects(response, reverse('mis_reservas'))
+        self.assertTrue(Reserva.objects.filter(id_usuario=self.huesped, id_alohamiento=hotel).exists())
+
+        mis_res = self.client.get(reverse('mis_reservas'))
+        self.assertContains(mis_res, 'Hotel Plaza')
+        self.assertContains(mis_res, 'N° 101')
+

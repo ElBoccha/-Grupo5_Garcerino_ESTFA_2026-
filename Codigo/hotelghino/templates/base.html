@@ -21,6 +21,7 @@
         <nav class="top-nav" aria-label="Navegacion principal">
             {% if user.is_authenticated %}
                 <a href="{% url 'home' %}">Inicio</a>
+                <a href="{% url 'mis_reservas' %}">Mis reservas</a>
                 {% if user.rol == 'P' or user.rol == 'A' %}
                     <a href="{% url 'mis_hoteles' %}">Mis hoteles</a>
                     <a class="button button-primary" href="{% url 'registro_hoteles' %}">Registrar hotel</a>

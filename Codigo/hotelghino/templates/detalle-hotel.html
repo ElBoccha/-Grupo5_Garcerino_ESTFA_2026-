@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ alojamiento.nombre }} - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="page">
+    <section class="section-heading">
+        <div>
+            <p class="eyebrow">Detalle del Alojamiento</p>
+            <h1>{{ alojamiento.nombre }}</h1>
+            <p>{{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
+        </div>
+        <div class="actions">
+            <a class="button button-secondary" href="{% url 'home' %}">Volver al inicio</a>
+        </div>
+    </section>
+
+    <div class="management-list">
+        <article class="management-card">
+            <div class="management-header">
+                <div>
+                    <p class="status-pill">{{ alojamiento.get_estado_display }}</p>
+                    <h2>Informacion del Hotel</h2>
+                    <p><strong>Direccion:</strong> {{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
+                    <p><strong>Tipo:</strong> {{ alojamiento.get_tipo_display }}</p>
+                    <p><strong>Publicado por:</strong> {{ alojamiento.id_usuario.username }}</p>
+                    <p style="margin-top: 10px;">{{ alojamiento.descripcion }}</p>
+                </div>
+            </div>
+
+            <div class="rooms-block">
+                <div class="rooms-heading">
+                    <div>
+                        <h3>Habitaciones disponibles</h3>
+                        <p>{{ habitaciones.count }} habitaciones registradas</p>
+                    </div>
+                </div>
+
+                {% if habitaciones %}
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Habitacion N°</th>
+                                    <th>Piso</th>
+                                    <th>Capacidad</th>
+                                    <th>Tipo</th>
+                                    <th>Precio por noche</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hab in habitaciones %}
+                                    <tr>
+                                        <td>{{ hab.numero_habitacion }}</td>
+                                        <td>{{ hab.numero_piso }}</td>
+                                        <td>{{ hab.capacidad_maxima }} personas</td>
+                                        <td>{{ hab.tipo }}</td>
+                                        <td><strong>${{ hab.precio_noche }}</strong></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state compact">
+                        <p>Este hotel no posee habitaciones registradas por el momento.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </article>
+
+        {% if habitaciones %}
+            <article class="panel">
+                <h2>Realizar Reserva</h2>
+                <p>Selecciona la habitacion y las fechas en las que deseas hospedarte.</p>
+
+                <form method="post" class="form-stack">
+                    {% csrf_token %}
+
+                    <label for="{{ form.id_habitacion.id_for_label }}">
+                        {{ form.id_habitacion.label }}
+                        <select name="id_habitacion" id="{{ form.id_habitacion.id_for_label }}" required>
+                            {% for hab in habitaciones %}
+                                <option value="{{ hab.id }}" {% if form.id_habitacion.value|add:0 == hab.id %}selected{% endif %}>
+                                    Habitacion {{ hab.numero_habitacion }} ({{ hab.tipo }}, {{ hab.capacidad_maxima }} pers.) - ${{ hab.precio_noche }}/noche
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {% if form.id_habitacion.errors %}
+                            <span class="form-error">{{ form.id_habitacion.errors.0 }}</span>
+                        {% endif %}
+                    </label>
+
+                    <label for="{{ form.fecha_inicio.id_for_label }}">
+                        {{ form.fecha_inicio.label }}
+                        {{ form.fecha_inicio }}
+                        {% if form.fecha_inicio.errors %}
+                            <span class="form-error">{{ form.fecha_inicio.errors.0 }}</span>
+                        {% endif %}
+                    </label>
+
+                    <label for="{{ form.fecha_finalizacion.id_for_label }}">
+                        {{ form.fecha_finalizacion.label }}
+                        {{ form.fecha_finalizacion }}
+                        {% if form.fecha_finalizacion.errors %}
+                            <span class="form-error">{{ form.fecha_finalizacion.errors.0 }}</span>
+                        {% endif %}
+                    </label>
+
+                    {% if form.non_field_errors %}
+                        <div class="form-error">
+                            {% for error in form.non_field_errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <button type="submit" class="button button-primary">Confirmar Reserva</button>
+                </form>
+            </article>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}
