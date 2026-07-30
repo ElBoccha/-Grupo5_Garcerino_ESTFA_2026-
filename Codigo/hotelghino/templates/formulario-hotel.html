@@ -5,27 +5,35 @@
 {% block content %}
 <main class="auth-layout auth-layout-form">
     <section class="auth-copy">
-        <p class="eyebrow">Panel propietario</p>
-        <h1>{{ titulo }}</h1>
-        <p>Modificá los datos de tu hotel. Los cambios quedan guardados de inmediato.</p>
+        <div class="auth-copy-header">
+            <p class="eyebrow">Panel propietario</p>
+            <h1>{{ titulo }}</h1>
+            <p>Modificá los datos de tu hotel. Los cambios quedan guardados de inmediato.</p>
+        </div>
 
         <div class="auth-features">
             <div class="auth-feature-item">
-                <span class="auth-feature-icon">✏️</span>
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </div>
                 <div>
                     <strong>Nombre y dirección</strong>
                     <p>Actualizá la información de contacto y ubicación.</p>
                 </div>
             </div>
             <div class="auth-feature-item">
-                <span class="auth-feature-icon">📝</span>
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
                 <div>
                     <strong>Descripción</strong>
                     <p>Mejorá el texto que ven los huéspedes en el listado.</p>
                 </div>
             </div>
             <div class="auth-feature-item">
-                <span class="auth-feature-icon">🔄</span>
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                </div>
                 <div>
                     <strong>Sin interrupciones</strong>
                     <p>El hotel sigue activo mientras lo editás.</p>
@@ -109,7 +117,7 @@
             </button>
         </form>
 
-        <p class="panel-footer"><a href="{% url 'mis_hoteles' %}">← Volver a mis hoteles</a></p>
+        <p class="panel-footer"><a href="{% url 'mis_hoteles' %}">Volver a mis hoteles</a></p>
     </section>
 </main>
 {% endblock %}

@@ -5,30 +5,38 @@
 {% block content %}
 <main class="auth-layout auth-layout-form">
     <section class="auth-copy">
-        <p class="eyebrow">Panel propietario</p>
-        <h1>Registrá tu hotel</h1>
-        <p>Completá los datos de tu alojamiento. Una vez registrado, podrás agregar habitaciones, precios y más desde tu panel.</p>
+        <div class="auth-copy-header">
+            <p class="eyebrow">Panel propietario</p>
+            <h1>Registrá tu hotel</h1>
+            <p>Completá los datos de tu alojamiento. Una vez registrado, podrás agregar habitaciones, precios y más desde tu panel.</p>
+        </div>
 
         <div class="auth-features">
             <div class="auth-feature-item">
-                <span class="auth-feature-icon">📋</span>
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </div>
                 <div>
                     <strong>Datos básicos</strong>
                     <p>Nombre, dirección y descripción del alojamiento.</p>
                 </div>
             </div>
             <div class="auth-feature-item">
-                <span class="auth-feature-icon">🛏️</span>
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+                </div>
                 <div>
                     <strong>Cargá habitaciones</strong>
                     <p>Después podés sumar habitaciones con precios y capacidad.</p>
                 </div>
             </div>
             <div class="auth-feature-item">
-                <span class="auth-feature-icon">🌐</span>
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </div>
                 <div>
                     <strong>Publicación inmediata</strong>
-                    <p>Tu hotel queda pendiente de aprobación y luego aparece en el sitio.</p>
+                    <p>Tu hotel queda activo y visible en el sitio.</p>
                 </div>
             </div>
         </div>
@@ -109,7 +117,7 @@
             </button>
         </form>
 
-        <p class="panel-footer"><a href="{% url 'home' %}">← Volver al inicio</a></p>
+        <p class="panel-footer"><a href="{% url 'home' %}">Volver al inicio</a></p>
     </section>
 </main>
 {% endblock %}

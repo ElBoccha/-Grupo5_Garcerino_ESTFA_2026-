@@ -5,27 +5,35 @@
 {% block content %}
 <main class="auth-layout">
     <section class="auth-copy">
-        <p class="eyebrow">Gestión de reservas turísticas</p>
-        <h1>Hoteles de todo el mundo para todos</h1>
-        <p>Ingresá para buscar alojamientos, administrar tus hoteles o pedir acceso como propietario.</p>
+        <div class="auth-copy-header">
+            <p class="eyebrow">Gestión de reservas turísticas</p>
+            <h1>Hoteles de todo el mundo para todos</h1>
+            <p>Ingresá para buscar alojamientos, administrar tus hoteles o pedir acceso como propietario.</p>
+        </div>
 
         <div class="auth-features">
             <div class="auth-feature-item">
-                <span class="auth-feature-icon">🏨</span>
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z"/><path d="m9 22 3-8 3 8"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>
+                </div>
                 <div>
                     <strong>Explorá hoteles</strong>
                     <p>Buscá entre cientos de alojamientos disponibles.</p>
                 </div>
             </div>
             <div class="auth-feature-item">
-                <span class="auth-feature-icon">🔑</span>
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3"/></svg>
+                </div>
                 <div>
                     <strong>Registrá tu hotel</strong>
                     <p>Si sos propietario, publicá y gestioná tu alojamiento.</p>
                 </div>
             </div>
             <div class="auth-feature-item">
-                <span class="auth-feature-icon">📅</span>
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                </div>
                 <div>
                     <strong>Reservas simples</strong>
                     <p>Encontrá disponibilidad y reservá al instante.</p>
@@ -67,7 +75,10 @@
             </label>
 
             {% if error %}
-                <p class="form-error form-error-box">⚠ {{ error }}</p>
+                <p class="form-error form-error-box">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                    <span>{{ error }}</span>
+                </p>
             {% endif %}
 
             <button class="button button-primary button-full" id="btn-login" type="submit">Iniciar sesión</button>
