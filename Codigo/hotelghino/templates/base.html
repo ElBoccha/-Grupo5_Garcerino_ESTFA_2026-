@@ -14,7 +14,7 @@
 <body>
     <header class="app-header">
         <a class="brand" href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{% url 'login' %}{% endif %}">
-            <span class="brand-mark">Hg</span>
+            <img src="{% static 'images/logo.png' %}" alt="Hotelghino" class="brand-logo-img">
             <span class="brand-name">Hotelghino</span>
         </a>
 

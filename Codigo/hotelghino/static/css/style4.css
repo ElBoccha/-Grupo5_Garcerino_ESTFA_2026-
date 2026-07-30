@@ -1065,6 +1065,20 @@ body {
     text-decoration: none;
 }
 
+.brand-logo-img {
+    height: 46px;
+    width: auto;
+    max-width: 160px;
+    object-fit: contain;
+    display: inline-block;
+    vertical-align: middle;
+    transition: transform 0.2s ease;
+}
+
+.brand:hover .brand-logo-img {
+    transform: scale(1.04);
+}
+
 .brand-mark {
     display: inline-flex;
     align-items: center;
@@ -1474,45 +1488,56 @@ body {
 .auth-features {
     display: grid;
     gap: 16px;
-    margin-top: 12px;
+    margin-top: 16px;
 }
 
 .auth-feature-item {
     display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 14px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(4px);
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 4px 14px rgba(23, 32, 51, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-/* Cuando la copia está sobre fondo blanco (no hero) */
-.auth-layout:not(.auth-layout-hero) .auth-feature-item {
-    border-color: var(--line);
-    background: var(--surface);
-    box-shadow: 0 2px 8px rgba(23, 32, 51, 0.05);
+.auth-feature-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(23, 32, 51, 0.07);
+    border-color: #cbd5e1;
 }
 
 .auth-feature-icon {
-    font-size: 22px;
-    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: var(--blue);
     flex-shrink: 0;
-    margin-top: 2px;
+}
+
+.auth-feature-icon svg {
+    width: 22px;
+    height: 22px;
 }
 
 .auth-feature-item strong {
     display: block;
     color: var(--ink);
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
 }
 
 .auth-feature-item p {
-    font-size: 13px;
-    line-height: 1.4;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--muted);
     margin: 0;
 }
 
@@ -1626,4 +1651,10 @@ textarea {
     .auth-layout-form {
         grid-template-columns: 1fr;
     }
+}
+
+.brand-logo-img {
+
+    width: 95px;
+    height: 95px;
 }
