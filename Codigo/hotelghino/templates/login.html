@@ -74,6 +74,10 @@
                 >
             </label>
 
+            <div class="auth-aux-links" style="display: flex; justify-content: flex-end; margin-top: -6px;">
+                <a href="{% url 'password_reset' %}" style="font-size: 13px; font-weight: 500;">¿Olvidaste tu contraseña?</a>
+            </div>
+
             {% if error %}
                 <p class="form-error form-error-box">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>

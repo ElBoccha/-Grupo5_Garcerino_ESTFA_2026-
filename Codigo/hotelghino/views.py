@@ -2,9 +2,15 @@ from datetime import datetime, date
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth import update_session_auth_hash, get_user_model
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.conf import settings
 from django.contrib import messages
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 from .forms import RegistroUsuario
 from .forms import ModificarUsuarioForm
 from .forms import RegistroAlojamiento
@@ -29,6 +35,70 @@ def registro(request):
         form = RegistroUsuario()
 
     return render(request, 'registro.html', {'form': form})
+
+
+def recuperar_contrasena(request):
+    """
+    Vista custom de recuperacion de contraseña.
+    - Si hay SMTP configurado (EMAIL_HOST_USER definido), envia el correo real.
+    - Si no hay SMTP (desarrollo local), renderiza el enlace de reset directamente en pantalla.
+    """
+    Usuario = get_user_model()
+    reset_link = None
+    error = None
+    enviado = False
+
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        if not email:
+            error = 'Por favor ingresá un correo electrónico.'
+        else:
+            usuarios = Usuario.objects.filter(email__iexact=email, is_active=True)
+            if usuarios.exists():
+                for usuario in usuarios:
+                    uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+                    token = default_token_generator.make_token(usuario)
+                    protocol = 'https' if request.is_secure() else 'http'
+                    domain = request.get_host()
+                    reset_url = f"{protocol}://{domain}/recuperar-contrasena/restablecer/{uid}/{token}/"
+
+                    smtp_configurado = bool(getattr(settings, 'EMAIL_HOST_USER', ''))
+
+                    if smtp_configurado:
+                        # Enviar correo real via SMTP
+                        try:
+                            html_message = render_to_string('password_reset_email.html', {
+                                'user': usuario,
+                                'uid': uid,
+                                'token': token,
+                                'protocol': protocol,
+                                'domain': domain,
+                            })
+                            send_mail(
+                                subject='Restablecer tu contraseña - Hotelghino',
+                                message=f'Para restablecer tu contraseña, visitá: {reset_url}',
+                                from_email=settings.DEFAULT_FROM_EMAIL,
+                                recipient_list=[email],
+                                html_message=html_message,
+                                fail_silently=False,
+                            )
+                            enviado = True
+                        except Exception as e:
+                            error = f'Error al enviar el correo: {e}. Revisá la configuración SMTP.'
+                    else:
+                        # Sin SMTP: mostrar el enlace en pantalla (modo desarrollo)
+                        reset_link = reset_url
+                        enviado = True
+                    break  # solo procesar el primer usuario
+            else:
+                # Siempre mostrar exito aunque no exista el email (seguridad)
+                enviado = True
+
+    return render(request, 'password_reset.html', {
+        'reset_link': reset_link,
+        'error': error,
+        'enviado': enviado,
+    })
 
 
 def login_view(request):
