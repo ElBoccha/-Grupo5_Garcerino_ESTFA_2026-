@@ -139,3 +139,61 @@ class HotelReservaViewsTest(TestCase):
         self.assertContains(mis_res, 'Hotel Plaza')
         self.assertContains(mis_res, 'N° 101')
 
+
+class PasswordResetTests(TestCase):
+    def setUp(self):
+        from django.core import mail
+        self.user = Usuario.objects.create_user(
+            username='usuarioprueba',
+            email='test@hotelghino.com',
+            password='ClaveVieja123',
+            dni=44556677,
+            telefono='1155443322'
+        )
+
+    def test_login_page_contiene_enlace_recuperar_contrasena(self):
+        response = self.client.get(reverse('login'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse('password_reset'))
+        self.assertContains(response, '¿Olvidaste tu contraseña?')
+
+    def test_solicitud_recuperar_contrasena_genera_enlace(self):
+        """La vista custom renderiza el reset_link en la misma pagina (sin SMTP configurado en tests)"""
+        response = self.client.post(reverse('password_reset'), {
+            'email': 'test@hotelghino.com'
+        })
+        self.assertEqual(response.status_code, 200)
+        # La vista custom devuelve la misma pagina con el enlace o mensaje de exito
+        self.assertContains(response, 'recuperar-contrasena/restablecer/')
+
+    def test_flujo_completo_cambio_de_contrasena(self):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+
+        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+
+        # Acceder a la URL de confirmación (Django redirige internamente a 'set-password' para proteger el token en sesión)
+        confirm_url = reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+        response = self.client.get(confirm_url, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Nueva contraseña')
+
+        # Obtener la URL donde se renderiza el formulario (con token protegido en sesión)
+        form_action_url = response.redirect_chain[-1][0] if response.redirect_chain else confirm_url
+
+        # Enviar la nueva contraseña
+        post_response = self.client.post(form_action_url, {
+            'new_password1': 'NuevaClaveSuperSegura123!',
+            'new_password2': 'NuevaClaveSuperSegura123!',
+        })
+        self.assertRedirects(post_response, reverse('password_reset_complete'))
+
+        # Verificar que la nueva contraseña funciona en el login
+        login_response = self.client.post(reverse('login'), {
+            'username': 'usuarioprueba',
+            'password': 'NuevaClaveSuperSegura123!'
+        })
+        self.assertRedirects(login_response, reverse('home'))
+

@@ -15,7 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.contrib.auth import views as auth_views
+from django.urls import path, reverse_lazy
 from hotelghino import views
 
 urlpatterns = [
@@ -23,6 +24,17 @@ urlpatterns = [
     path('home/', views.home, name='home'),
     path('logout/', views.logout_view, name='logout'),
     path('registro/', views.registro, name='registro'),
+    path('recuperar-contrasena/', views.recuperar_contrasena, name='password_reset'),
+    path('recuperar-contrasena/enviado/', auth_views.PasswordResetDoneView.as_view(
+        template_name='password_reset_done.html'
+    ), name='password_reset_done'),
+    path('recuperar-contrasena/restablecer/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
+        template_name='password_reset_confirm.html',
+        success_url=reverse_lazy('password_reset_complete'),
+    ), name='password_reset_confirm'),
+    path('recuperar-contrasena/completado/', auth_views.PasswordResetCompleteView.as_view(
+        template_name='password_reset_complete.html'
+    ), name='password_reset_complete'),
     path('configuracion/', views.configuracion, name='configuracion'),
     path('configuracion/modificar-usuario/', views.modificarUsuario, name='modificar_usuario'),
     path("admin/", admin.site.urls),
