@@ -2,14 +2,14 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import Usuario
-from .models import Alojamiento
-from .models import Habitacion
-from .models import SolicitudPropietario
-from .models import Reserva
+from django.utils import timezone
+from .models import Usuario, Alojamiento, Habitacion, SolicitudPropietario, Reserva
+
 
 class RegistroUsuario(UserCreationForm):
-
+    """
+    Formulario de registro inicial para nuevos usuarios del sistema.
+    """
     class Meta:
         model = Usuario
         fields = [
@@ -29,6 +29,10 @@ class RegistroUsuario(UserCreationForm):
 
 
 class ModificarUsuarioForm(forms.ModelForm):
+    """
+    Formulario para editar el perfil del usuario activo, permitiendo
+    actualizar datos personales y opcionalmente la contraseña.
+    """
     password1 = forms.CharField(
         label='Nueva contrasena',
         required=False,
@@ -79,7 +83,9 @@ class ModificarUsuarioForm(forms.ModelForm):
 
 
 class RegistroAlojamiento(forms.ModelForm):
-
+    """
+    Formulario para el registro de nuevos alojamientos turísticos.
+    """
     class Meta:
         model = Alojamiento
         fields = [
@@ -103,6 +109,10 @@ class RegistroAlojamiento(forms.ModelForm):
 
 
 class HabitacionForm(forms.ModelForm):
+    """
+    Formulario para dar de alta o modificar habitaciones asociadas a un alojamiento.
+    Valida que los valores numéricos sean positivos y mayores a cero donde corresponda.
+    """
     TIPOS_HABITACION = (
         ('Simple', 'Simple'),
         ('Doble', 'Doble'),
@@ -147,7 +157,9 @@ class HabitacionForm(forms.ModelForm):
 
 
 class SolicitudPropietarioForm(forms.ModelForm):
-
+    """
+    Formulario para que un huésped solicite el rol de propietario con un motivo explicativo.
+    """
     class Meta:
         model = SolicitudPropietario
         fields = [
@@ -165,6 +177,10 @@ class SolicitudPropietarioForm(forms.ModelForm):
 
 
 class ReservaForm(forms.ModelForm):
+    """
+    Formulario de reserva de habitación.
+    Verifica coherencia de fechas: ingreso no anterior a hoy y salida posterior a ingreso.
+    """
     fecha_inicio = forms.DateField(
         label='Fecha de ingreso',
         widget=forms.DateInput(attrs={'type': 'date'})
@@ -190,9 +206,7 @@ class ReservaForm(forms.ModelForm):
             if fecha_inicio >= fecha_finalizacion:
                 self.add_error('fecha_finalizacion', 'La fecha de salida debe ser posterior a la fecha de ingreso.')
 
-            from django.utils import timezone
             if fecha_inicio < timezone.now().date():
                 self.add_error('fecha_inicio', 'La fecha de ingreso no puede ser anterior a hoy.')
 
         return cleaned_data
-
