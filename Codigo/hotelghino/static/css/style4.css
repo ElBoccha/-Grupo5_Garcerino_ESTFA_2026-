@@ -211,10 +211,13 @@ label,
     text-align: center;
     text-decoration: none;
     white-space: nowrap;
+    transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
 }
 
 .button:hover {
-    filter: brightness(0.96);
+    filter: brightness(0.95);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(47, 90, 168, 0.12);
     text-decoration: none;
 }
 
@@ -423,6 +426,12 @@ label,
 
 .hotel-card {
     overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.hotel-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(23, 32, 51, 0.12);
 }
 
 .hotel-card-media {
@@ -430,6 +439,11 @@ label,
     background-color: #dbe7ef;
     background-position: center;
     background-size: cover;
+    transition: transform 0.35s ease;
+}
+
+.hotel-card:hover .hotel-card-media {
+    transform: scale(1.02);
 }
 
 .media-coast {
