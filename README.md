@@ -73,3 +73,5 @@ Si lo configuras manualmente en Render:
 - Variables: `DEBUG=False`, `SECRET_KEY`, `ALLOWED_HOSTS=.onrender.com`, `CSRF_TRUSTED_ORIGINS=https://*.onrender.com`
 
 Si usas una URL propia de Render o un dominio personalizado, agrega ese host a `ALLOWED_HOSTS` y su origen HTTPS a `CSRF_TRUSTED_ORIGINS`.
+
+Diagrama de Gantt https://app.notion.com/p/769605c05ee783fe92398179e809bf2f?v=027605c05ee783ef84630838d31e9df7&source=copy_link
