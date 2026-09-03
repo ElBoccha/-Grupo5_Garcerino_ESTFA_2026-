@@ -62,10 +62,13 @@ def recuperar_contrasena(request):
                     domain = request.get_host()
                     reset_url = f"{protocol}://{domain}/recuperar-contrasena/restablecer/{uid}/{token}/"
 
-                    smtp_configurado = bool(getattr(settings, 'EMAIL_HOST_USER', ''))
+                    smtp_configurado = (
+                        settings.EMAIL_BACKEND
+                        != 'django.core.mail.backends.console.EmailBackend'
+                    )
 
                     if smtp_configurado:
-                        # Enviar correo real via SMTP
+                        # Enviar correo real via Resend (anymail backend)
                         try:
                             html_message = render_to_string('password_reset_email.html', {
                                 'user': usuario,
@@ -84,7 +87,7 @@ def recuperar_contrasena(request):
                             )
                             enviado = True
                         except Exception as e:
-                            error = f'Error al enviar el correo: {e}. Revisá la configuración SMTP.'
+                            error = f'Error al enviar el correo: {e}. Revisá la configuración de Resend.'
                     else:
                         # Sin SMTP: mostrar el enlace en pantalla (modo desarrollo)
                         reset_link = reset_url

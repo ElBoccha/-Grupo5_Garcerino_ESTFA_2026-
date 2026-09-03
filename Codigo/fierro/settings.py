@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'hotelghino',
+    'anymail',
 ]
 
 MIDDLEWARE = [
@@ -208,14 +209,28 @@ LOGOUT_REDIRECT_URL = 'login'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Configuración de Email 
-EMAIL_BACKEND = os.environ.get(
-    'EMAIL_BACKEND',
-    'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend'
+# ---------------------------------------------------------------------------
+# Configuración de Email via Resend (API HTTPS — sin SMTP)
+# ---------------------------------------------------------------------------
+# En desarrollo (DEBUG=True): los emails se imprimen en la consola.
+# En producción (DEBUG=False): se envían via la API de Resend usando anymail.
+# La API key NUNCA debe estar en el código; se lee de la variable de entorno
+# RESEND_API_KEY configurada en Render (o en el entorno local si se desea).
+# ---------------------------------------------------------------------------
+
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
+
+ANYMAIL = {
+    # La clave se obtiene exclusivamente de la variable de entorno.
+    # Nunca hardcodees la API key aquí.
+    'RESEND_API_KEY': os.environ.get('RESEND_API_KEY', ''),
+}
+
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DEFAULT_FROM_EMAIL',
+    'onboarding@resend.dev',  # remitente temporal hasta verificar dominio
 )
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', )
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD',)
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Hotelghino <noreply@hotelghino.com>')
+
