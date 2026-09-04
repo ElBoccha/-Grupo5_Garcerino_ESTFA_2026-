@@ -98,6 +98,21 @@ class HotelReservaViewsTest(TestCase):
         home_resp = self.client.get(reverse('home'))
         self.assertContains(home_resp, 'Grand Hotel Test')
 
+    def test_busqueda_hotel_por_destino(self):
+        from hotelghino.models import Alojamiento
+        Alojamiento.objects.create(
+            nombre='Beto cincelados',
+            calle='Andrade',
+            numero_calle='271',
+            descripcion='beto estas de buen humor: no se',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+        self.client.force_login(self.huesped)
+        response = self.client.get(reverse('home'), {'destino': 'Beto'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Beto cincelados')
+
     def test_reserva_hotel_y_ver_en_mis_reservas(self):
         # Crear hotel y habitacion
         from hotelghino.models import Alojamiento, Habitacion, Reserva
