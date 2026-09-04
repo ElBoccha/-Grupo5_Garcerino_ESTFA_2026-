@@ -37,6 +37,7 @@ class Alojamiento(models.Model):
     Representa un establecimiento o alojamiento turístico (hotel, hostel, cabaña, etc.)
     publicado por un propietario y verificado por la administración.
     """
+    # Estados de aprobacion del alojamiento
     ESTADOS = (
         ('P', 'Pendiente'),
         ('A', 'Activo'),
