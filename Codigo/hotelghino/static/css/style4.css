@@ -211,6 +211,7 @@ label,
     text-align: center;
     text-decoration: none;
     white-space: nowrap;
+    user-select: none;
     transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -456,6 +457,20 @@ label,
 
 .media-lobby {
     background-image: url("https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=900&q=72");
+}
+
+.media-tuyu {
+    background-image: url("../images/mar_del_tuyu.jpg");
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.media-santaclara {
+    background-image: url("../images/santa_clara.jpg");
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
 }
 
 .hotel-card-body {
