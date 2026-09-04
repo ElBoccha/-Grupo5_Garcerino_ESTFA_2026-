@@ -43,9 +43,14 @@ El proyecto Django esta dentro de la carpeta `Codigo`.
    ```
 3. Aplicar migraciones y correr la pagina:
    ```powershell
-   python manage.py migrate
-   python manage.py runserver
-   ```
+    python manage.py migrate
+    python manage.py runserver
+    ```
+
+Para correr las pruebas unitarias:
+```powershell
+python manage.py test
+```
 
 La pagina queda disponible en `http://127.0.0.1:8000/`.
 
