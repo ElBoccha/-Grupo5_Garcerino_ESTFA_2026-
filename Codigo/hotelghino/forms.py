@@ -87,6 +87,7 @@ class RegistroAlojamiento(forms.ModelForm):
     Formulario para el registro de nuevos alojamientos turísticos.
     """
     class Meta:
+        # Campos del formulario de alojamiento
         model = Alojamiento
         fields = [
             "nombre",
