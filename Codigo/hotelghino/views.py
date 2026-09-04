@@ -126,6 +126,7 @@ def home(request):
     desde = request.GET.get('desde', '').strip()
     hasta = request.GET.get('hasta', '').strip()
 
+    # Obtener hoteles activos o pendientes ordenados por fecha
     alojamientos = Alojamiento.objects.filter(
         Q(estado='A') | Q(estado='P'),
         tipo='HT'
@@ -422,6 +423,7 @@ def solicitudPropietario(request):
 
 @login_required
 def detalleHotel(request, alojamiento_id):
+    # Cargar datos del hotel y sus habitaciones asociadas
     alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id)
     habitaciones = Habitacion.objects.filter(id_alohamiento=alojamiento).order_by('numero_habitacion')
 
