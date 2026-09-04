@@ -14,7 +14,7 @@
         <form class="search-panel" method="get">
             <label>
                 Destino
-                <input type="text" name="destino" value="{{ destino }}" placeholder="Mar del Plata, Pinamar...">
+                <input type="text" name="destino" value="{{ destino }}" placeholder="Mar del Tuyu, Santa Clara, Pinamar...">
             </label>
             <label>
                 Desde
@@ -45,10 +45,17 @@
     </section>
 
     {% if alojamientos %}
+        <!-- Listado de hoteles disponibles -->
         <section class="hotel-grid">
             {% for alojamiento in alojamientos %}
                 <article class="hotel-card">
-                    <div class="hotel-card-media media-{% cycle 'coast' 'city' 'lobby' %}"></div>
+                    {% if 'beto' in alojamiento.nombre|lower or 'tuyu' in alojamiento.nombre|lower or 'andrade' in alojamiento.calle|lower %}
+                        <div class="hotel-card-media media-tuyu"></div>
+                    {% elif 'sorro' in alojamiento.nombre|lower or 'santa clara' in alojamiento.nombre|lower or 'lag tio' in alojamiento.calle|lower %}
+                        <div class="hotel-card-media media-santaclara"></div>
+                    {% else %}
+                        <div class="hotel-card-media media-{% cycle 'coast' 'city' 'lobby' %}"></div>
+                    {% endif %}
                     <div class="hotel-card-body">
                         <p class="status-pill">{{ alojamiento.get_estado_display }}</p>
                         <h3>{{ alojamiento.nombre }}</h3>
