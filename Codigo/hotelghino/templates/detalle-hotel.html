@@ -17,6 +17,11 @@
 
     <div class="management-list">
         <article class="management-card">
+            {% if 'beto' in alojamiento.nombre|lower or 'tuyu' in alojamiento.nombre|lower or 'andrade' in alojamiento.calle|lower %}
+                <div class="hotel-card-media media-tuyu" style="min-height: 220px; border-radius: 8px;"></div>
+            {% elif 'sorro' in alojamiento.nombre|lower or 'santa clara' in alojamiento.nombre|lower or 'lag tio' in alojamiento.calle|lower %}
+                <div class="hotel-card-media media-santaclara" style="min-height: 220px; border-radius: 8px;"></div>
+            {% endif %}
             <div class="management-header">
                 <div>
                     <p class="status-pill">{{ alojamiento.get_estado_display }}</p>
@@ -28,6 +33,7 @@
                 </div>
             </div>
 
+            <!-- Bloque de habitaciones disponibles -->
             <div class="rooms-block">
                 <div class="rooms-heading">
                     <div>
