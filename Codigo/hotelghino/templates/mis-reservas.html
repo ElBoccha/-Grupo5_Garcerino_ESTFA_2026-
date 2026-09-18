@@ -6,11 +6,10 @@
 <main class="page">
     <section class="section-heading">
         <div>
-            <p class="eyebrow">Mi Cuenta</p>
             <h1>Mis reservas</h1>
             <p>Consulta y administra tus reservas de hospedaje.</p>
         </div>
-        <a class="button button-primary" href="{% url 'home' %}">Buscar mas hoteles</a>
+        <a class="button button-accent" href="{% url 'home' %}">Buscar mas hoteles</a>
     </section>
 
     {% if reservas %}
@@ -19,7 +18,7 @@
                 <article class="management-card">
                     <div class="management-header">
                         <div>
-                            <p class="status-pill">{{ reserva.estado }}</p>
+                            <span class="status-pill status-pill--{% if reserva.estado == 'Cancelada' %}cancelada{% else %}confirmada{% endif %}">{{ reserva.estado }}</span>
                             <h2>{{ reserva.id_alohamiento.nombre }}</h2>
                             <p>{{ reserva.id_alohamiento.calle }} {{ reserva.id_alohamiento.numero_calle }}</p>
                         </div>
@@ -51,9 +50,9 @@
                                     <td><strong>${{ reserva.pago }}</strong></td>
                                     <td>
                                         {% if reserva.estado == 'Cancelada' %}
-                                            <span style="color: var(--red); font-weight: 700;">Cancelada</span>
+                                            <span class="reserva-estado--cancelada">Cancelada</span>
                                         {% else %}
-                                            <span style="color: var(--green); font-weight: 700;">Confirmada</span>
+                                            <span class="reserva-estado--confirmada">Confirmada</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -65,6 +64,9 @@
         </section>
     {% else %}
         <section class="empty-state">
+            <span class="empty-state-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </span>
             <h3>Todavia no realizaste ninguna reserva</h3>
             <p>Explora los hoteles disponibles en la pagina principal y realiza tu primera reserva.</p>
             <a class="button button-primary" href="{% url 'home' %}">Buscar hoteles</a>

@@ -6,7 +6,6 @@
 <main class="auth-layout">
     <section class="auth-copy">
         <div class="auth-copy-header">
-            <p class="eyebrow">Gestión de reservas turísticas</p>
             <h1>Hoteles de todo el mundo para todos</h1>
             <p>Ingresá para buscar alojamientos, administrar tus hoteles o pedir acceso como propietario.</p>
         </div>
@@ -44,7 +43,6 @@
 
     <section class="panel panel-auth">
         <div class="panel-header">
-            <p class="eyebrow">Bienvenido de vuelta</p>
             <h2>Iniciar sesión</h2>
         </div>
 
@@ -74,8 +72,8 @@
                 >
             </label>
 
-            <div class="auth-aux-links" style="display: flex; justify-content: flex-end; margin-top: -6px;">
-                <a href="{% url 'password_reset' %}" style="font-size: 13px; font-weight: 500;">¿Olvidaste tu contraseña?</a>
+            <div class="auth-aux-links">
+                <a href="{% url 'password_reset' %}" class="auth-aux-link">¿Olvidaste tu contraseña?</a>
             </div>
 
             {% if error %}
