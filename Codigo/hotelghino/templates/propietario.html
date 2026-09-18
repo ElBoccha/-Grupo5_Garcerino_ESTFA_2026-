@@ -6,7 +6,6 @@
 <main class="auth-layout auth-layout-form">
     <section class="auth-copy">
         <div class="auth-copy-header">
-            <p class="eyebrow">Propietarios</p>
             <h1>Registrá tu alojamiento en Hotelghino</h1>
             <p>Contanos por qué querés administrar hoteles. Un administrador revisará tu solicitud y te notificará.</p>
         </div>
@@ -44,13 +43,15 @@
 
     <section class="panel panel-auth">
         <div class="panel-header">
-            <p class="eyebrow">Acceso propietario</p>
             <h2>Solicitud para registrar alojamientos</h2>
         </div>
 
         {% if solicitud_pendiente %}
             <div class="empty-state">
-                <p class="eyebrow">En revisión</p>
+                <span class="empty-state-icon" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </span>
+                <span class="status-pill status-pill--pendiente">En revisión</span>
                 <h3>Tu solicitud está pendiente</h3>
                 <p>Ya tenés una solicitud en revisión. Te avisaremos cuando el administrador la procese.</p>
                 <a class="button button-secondary" id="btn-volver-inicio-propietario" href="{% url 'home' %}">

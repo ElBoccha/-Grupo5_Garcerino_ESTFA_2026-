@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-18T00:00:00.000Z",
+  "title": "Design System: Hotelghino",
+  "extensions": {
+    "colorMeta": {
+      "blue-500": { "role": "primary", "displayName": "Committed Indigo", "canonical": "#2a4fe0", "tonalRamp": ["#101a33", "#172f99", "#1f3fc4", "#2a4fe0", "#4d6ce8", "#8ba0f0", "#dbe3ff", "#eef2ff"] },
+      "coral-500": { "role": "secondary", "displayName": "Sunset Coral", "canonical": "#ff6b4a", "tonalRamp": ["#3a180d", "#c23f20", "#e8542f", "#ff6b4a", "#ff9276", "#ffbda9", "#ffddd0", "#fff1ec"] },
+      "teal-500": { "role": "tertiary", "displayName": "Teal", "canonical": "#0db6a6", "tonalRamp": ["#04322d", "#0a9384", "#0db6a6", "#3ac9bb", "#7fdccf", "#a9e8de", "#c7f3ea", "#e6faf6"] },
+      "amber-500": { "role": "status-pending", "displayName": "Amber", "canonical": "#e2a327", "tonalRamp": ["#3d2c07", "#b9840f", "#e2a327", "#eabc5c", "#f0cd85", "#f6deac", "#ffe9bd", "#fff7e6"] },
+      "red-500": { "role": "status-danger", "displayName": "Danger Red", "canonical": "#e5484d", "tonalRamp": ["#380f10", "#c23238", "#e5484d", "#ec7276", "#f29ca0", "#f8c3c5", "#ffd6d6", "#fdecec"] },
+      "ink": { "role": "neutral", "displayName": "Ink Navy", "canonical": "#101a33", "tonalRamp": ["#101a33"] },
+      "bg": { "role": "neutral", "displayName": "Near-White Ground", "canonical": "#f5f7fc", "tonalRamp": ["#f5f7fc"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headline and page H1 only." },
+      "headline": { "displayName": "Headline", "purpose": "Section headings (H2)." },
+      "title": { "displayName": "Title", "purpose": "Card/block titles (H3)." },
+      "body": { "displayName": "Body", "purpose": "Paragraph copy, default muted color." },
+      "label": { "displayName": "Label", "purpose": "Form labels, table headers, status pills." }
+    },
+    "shadows": [
+      { "name": "shadow-xs", "value": "0 1px 2px rgba(16, 26, 51, 0.06)", "purpose": "Sticky header scrolled border companion." },
+      { "name": "shadow-sm", "value": "0 6px 16px -4px rgba(16, 26, 51, 0.10)", "purpose": "Resting cards, table-action hover." },
+      { "name": "shadow-md", "value": "0 16px 34px -10px rgba(16, 26, 51, 0.16)", "purpose": "Panels, toasts." },
+      { "name": "shadow-lg", "value": "0 30px 60px -18px rgba(16, 26, 51, 0.24)", "purpose": "Floating hero search panel, hotel-card hover lift." },
+      { "name": "shadow-blue", "value": "0 14px 28px -10px rgba(42, 79, 224, 0.38)", "purpose": "Primary button hover." },
+      { "name": "shadow-coral", "value": "0 14px 28px -10px rgba(255, 107, 74, 0.4)", "purpose": "Accent button hover." }
+    ],
+    "motion": [
+      { "name": "ease-out-expo", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Default easing for reveals, hovers, panel transitions — the primary motion grammar." },
+      { "name": "ease-out-back", "value": "cubic-bezier(0.34, 1.56, 0.64, 1)", "purpose": "Restrained overshoot reserved for 4 small accents: toast entrance, logo hover, timeline-icon hover, confirmation-icon pop-in. Not the primary grammar." },
+      { "name": "dur-fast", "value": "150ms", "purpose": "Micro-interactions (color/border changes)." },
+      { "name": "dur-base", "value": "260ms", "purpose": "Standard transitions (lifts, panel reveals)." },
+      { "name": "dur-slow", "value": "480ms", "purpose": "Entrance animations (rise-in, pop-in)." }
+    ],
+    "breakpoints": [
+      { "name": "xl", "value": "1080px" },
+      { "name": "lg", "value": "900px" },
+      { "name": "md", "value": "780px" },
+      { "name": "sm", "value": "680px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Default action button (structural/trust actions).",
+      "html": "<a class=\"ds-btn-primary\" href=\"#\">Ver disponibilidad</a>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 20px; border-radius: 10px; background: #2a4fe0; color: #fff; font-family: Manrope, sans-serif; font-weight: 700; font-size: 14.5px; text-decoration: none; transition: transform 150ms cubic-bezier(0.16,1,0.3,1), box-shadow 150ms cubic-bezier(0.16,1,0.3,1), background-color 150ms ease; } .ds-btn-primary:hover { background: #1f3fc4; box-shadow: 0 14px 28px -10px rgba(42,79,224,0.38); transform: translateY(-2px); } .ds-btn-primary:focus-visible { outline: 2px solid #ff6b4a; outline-offset: 3px; }"
+    },
+    {
+      "name": "Accent Button",
+      "kind": "button",
+      "refersTo": "button-accent",
+      "description": "Conversion CTA — reserved for primary conversion actions only.",
+      "html": "<a class=\"ds-btn-accent\" href=\"#\">Registrar hotel</a>",
+      "css": ".ds-btn-accent { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 20px; border-radius: 10px; background: #ff6b4a; color: #fff; font-family: Manrope, sans-serif; font-weight: 700; font-size: 14.5px; text-decoration: none; transition: transform 150ms cubic-bezier(0.16,1,0.3,1), box-shadow 150ms cubic-bezier(0.16,1,0.3,1), background-color 150ms ease; } .ds-btn-accent:hover { background: #e8542f; box-shadow: 0 14px 28px -10px rgba(255,107,74,0.4); transform: translateY(-2px); }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-pill",
+      "description": "Availability/state indicator used on hotel cards, reservation tables, management cards.",
+      "html": "<span class=\"ds-status-pill ds-status-pill--activo\">Activo</span>",
+      "css": ".ds-status-pill { display: inline-flex; align-items: center; gap: 6px; width: fit-content; padding: 5px 12px; border-radius: 999px; font-family: Inter, sans-serif; font-size: 12px; font-weight: 700; } .ds-status-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; } .ds-status-pill--activo { color: #0a9384; background: #e6faf6; } .ds-status-pill--pendiente { color: #b9840f; background: #fff7e6; animation: ds-pulse-soft 2.4s ease-in-out infinite; } .ds-status-pill--rechazado { color: #c23238; background: #fdecec; } @keyframes ds-pulse-soft { 0%, 100% { box-shadow: 0 0 0 0 #ffe9bd; } 50% { box-shadow: 0 0 0 5px transparent; } }"
+    },
+    {
+      "name": "Hotel Card",
+      "kind": "card",
+      "refersTo": "card-hotel",
+      "description": "Discovery card with media, status pill, and CTA — used in the home search grid.",
+      "html": "<article class=\"ds-hotel-card\"><div class=\"ds-hotel-card-media\"><span class=\"ds-status-pill\">Activo</span></div><div class=\"ds-hotel-card-body\"><h3>Hotel Andrade</h3><p>Mar del Tuyu</p></div></article>",
+      "css": ".ds-hotel-card { border: 1px solid #e3e7f1; border-radius: 16px; background: #fff; box-shadow: 0 6px 16px -4px rgba(16,26,51,0.10); overflow: hidden; transition: transform 260ms cubic-bezier(0.16,1,0.3,1), box-shadow 260ms cubic-bezier(0.16,1,0.3,1); } .ds-hotel-card:hover { transform: translateY(-6px); box-shadow: 0 30px 60px -18px rgba(16,26,51,0.24); border-color: #dbe3ff; } .ds-hotel-card-media { position: relative; min-height: 190px; background: #eef2ff center/cover; } .ds-hotel-card-body { display: grid; gap: 10px; padding: 20px; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Text input used across all forms (auth, hotel/room registration, config).",
+      "html": "<label>Destino<input type=\"text\" placeholder=\"Mar del Plata\"></label>",
+      "css": ".ds-input-wrap { display: flex; flex-direction: column; gap: 8px; color: #101a33; font-family: Inter, sans-serif; font-size: 13.5px; font-weight: 700; } .ds-input-wrap input { min-height: 46px; padding: 11px 14px; border: 1.5px solid #e3e7f1; border-radius: 10px; color: #101a33; background: #fff; outline: none; font-family: Inter, sans-serif; font-size: 16px; font-weight: 400; transition: border-color 150ms ease, box-shadow 150ms ease; } .ds-input-wrap input:hover { border-color: #cdd4e5; } .ds-input-wrap input:focus { border-color: #2a4fe0; box-shadow: 0 0 0 4px #eef2ff; }"
+    },
+    {
+      "name": "Top Navigation",
+      "kind": "nav",
+      "refersTo": "nav-primary",
+      "description": "Sticky translucent header nav with coral underline hover accent.",
+      "html": "<nav class=\"ds-top-nav\"><a href=\"#\">Inicio</a><a href=\"#\">Mis reservas</a></nav>",
+      "css": ".ds-top-nav { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.86); backdrop-filter: blur(14px) saturate(1.4); padding: 12px 20px; } .ds-top-nav a { position: relative; padding: 8px 4px; margin-left: 8px; color: #3a4257; font-family: Inter, sans-serif; font-weight: 600; font-size: 14.5px; text-decoration: none; } .ds-top-nav a::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: 2px; height: 2px; border-radius: 999px; background: #ff6b4a; transform: scaleX(0); transform-origin: left; transition: transform 260ms cubic-bezier(0.16,1,0.3,1); } .ds-top-nav a:hover { color: #101a33; } .ds-top-nav a:hover::after { transform: scaleX(1); }"
+    },
+    {
+      "name": "Toast",
+      "kind": "custom",
+      "refersTo": "toast",
+      "description": "System message stack, top-right (bottom-full on mobile), staggered overshoot entrance.",
+      "html": "<div class=\"ds-toast ds-toast-success\"><span class=\"ds-toast-icon\">&#10003;</span><span>Reserva confirmada</span></div>",
+      "css": ".ds-toast { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border-radius: 10px; background: #fff; box-shadow: 0 16px 34px -10px rgba(16,26,51,0.16); color: #101a33; font-family: Inter, sans-serif; font-size: 14px; font-weight: 500; animation: ds-toast-in 260ms cubic-bezier(0.34,1.56,0.64,1) both; } @keyframes ds-toast-in { from { opacity: 0; transform: translateX(24px) scale(0.96); } to { opacity: 1; transform: translateX(0) scale(1); } } .ds-toast-icon { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 50%; background: #e6faf6; color: #0a9384; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Live Command Center",
+    "overview": "Hotelghino reads as an operating console for tourist bookings, not a brochure: a committed indigo blue drives structure, navigation, and trust; a sunset coral fires only for conversion moments; a teal confirms availability and positive states. The system is unapologetically full-palette (four named roles: blue, coral, teal, amber, plus a red for danger/rejection) rather than a single muted brand color diluted across everything. It sits on a crisp near-white ground (#f5f7fc) with ink-navy text, so the saturation reads as confidence rather than noise. The build rejects the flatter, corporate-blue-on-white SaaS template the product started from. Its energy shows up in three deliberate places rather than everywhere at once: the hero's animated gradient-mesh wash (indigo -> coral -> teal, drifting slowly), a floating glass-panel search card that breaks out of the hero's bottom edge, and a small set of overshoot-eased micro-accents (toast entrance, logo hover, timeline-icon hover, confirmation-icon pop-in). Everywhere else -- management cards, tables, forms, status pills -- the same tokens render as a calm, scannable console with no loud CTA competing with the task at hand. Manrope (display/headings) is geometric and confident; Inter (body, UI, tables) is the dense-data workhorse.",
+    "keyCharacteristics": [
+      "Full-palette strategy: indigo (primary/structure), coral (conversion CTAs only), teal (positive/availability), amber (pending), red (danger)",
+      "Soft, offset, blurred elevation shadows (never hard/flat drop shadows) at generous 10-22px radii",
+      "One animated gradient-mesh moment, reserved for the hero only -- never repeated as page decoration",
+      "ease-out-expo for all primary motion (reveals, hovers, panel transitions); ease-out-back reserved for four small secondary accents only",
+      "Inline SVG iconography throughout -- no icon fonts, no glyph icons"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Coral fires for conversion actions only (primary CTAs, active-nav underline). It never appears as a structural or decorative color; structure and trust stay indigo.", "section": "colors" },
+      { "name": "The Hero-Only Gradient Rule", "body": "The animated indigo->coral->teal gradient-mesh wash is a single signature moment on the home hero background. It is not reused as a repeating pattern, card background, or section decoration anywhere else in the build.", "section": "colors" },
+      { "name": "The Display-for-Structure Rule", "body": "Manrope is reserved for headings, buttons, brand name, and status/label chrome (anything structural or action-bearing). Long-form and tabular content always renders in Inter.", "section": "typography" },
+      { "name": "The Ambient-Not-Structural Rule", "body": "Shadows communicate hover/rest state and stacking order (cards lifting on hover, panels floating over the hero), never a decorative outline. Color-tinted shadows (--shadow-blue, --shadow-coral) appear only on their matching button's hover state, not at rest.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use indigo for all structural and navigational chrome; it is the only color allowed to carry trust/wayfinding weight.",
+      "Do reserve coral strictly for conversion CTAs and the active-nav accent -- never for card backgrounds, section washes, or decorative fills.",
+      "Do use ease-out-expo (cubic-bezier(0.16, 1, 0.3, 1)) as the default transition timing for reveals, hovers, and panel motion.",
+      "Do build depth with soft, offset, blurred shadows (--shadow-sm/md/lg) at the documented radii -- never a hard-edged or zero-offset shadow.",
+      "Do inline icons as SVG at 16-24px; the build has no icon-font or glyph-icon dependency anywhere."
+    ],
+    "donts": [
+      "Don't repeat the hero's animated gradient-mesh wash as decoration elsewhere in the product; it is a one-time signature moment.",
+      "Don't apply the ease-out-back overshoot easing outside its four confirmed accents (toast entrance, logo hover, timeline-icon hover, confirmation-icon pop-in); the primary motion grammar is ease-out-expo.",
+      "Don't add kickers, eyebrows, or all-caps micro-labels above headings -- none exist in the build; the hierarchy carries weight through Manrope size/weight alone.",
+      "Don't introduce hard-offset, non-blurred \"neobrutalist\" shadows; every shadow token in this system is soft and blurred."
+    ]
+  }
+}

@@ -5,8 +5,9 @@
 {% block content %}
 <main class="page-narrow">
     <section class="panel">
-        <p class="eyebrow">Cuenta</p>
-        <h1>Modificar datos del usuario</h1>
+        <div class="panel-header">
+            <h1>Modificar datos del usuario</h1>
+        </div>
 
         <form method="post" class="form-stack">
             {% csrf_token %}
