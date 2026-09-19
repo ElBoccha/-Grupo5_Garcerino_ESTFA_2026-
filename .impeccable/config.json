@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "Codigo/hotelghino/templates/password_reset_email.html"
+        ],
+        "createdAt": "2026-09-18T12:41:56.708Z",
+        "reason": "false positive: standard offset+blur elevation shadow (0 8px 24px, neutral near-black ink rgba(16,26,51,.08)) on a white card over a light page, not a zero-offset colored halo on a dark surface"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "files": [
+          "Codigo/hotelghino/static/css/style4.css"
+        ],
+        "createdAt": "2026-09-18T12:57:06.700Z",
+        "reason": "intentional restrained overshoot easing reserved for 4 small secondary accents (toast entrance, logo hover, timeline icon hover, confirmation icon pop-in), not the page's primary motion grammar which uses ease-out-expo for all major reveals; matches the user's requested dynamic/playful direction"
+      }
+    ]
+  }
+}

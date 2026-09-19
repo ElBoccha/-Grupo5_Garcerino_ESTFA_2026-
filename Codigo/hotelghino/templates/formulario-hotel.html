@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="auth-layout auth-layout-form">
+    <section class="auth-copy">
+        <div class="auth-copy-header">
+            <h1>{{ titulo }}</h1>
+            <p>Modificá los datos de tu hotel. Los cambios quedan guardados de inmediato.</p>
+        </div>
+
+        <div class="auth-features">
+            <div class="auth-feature-item">
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </div>
+                <div>
+                    <strong>Nombre y dirección</strong>
+                    <p>Actualizá la información de contacto y ubicación.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <div>
+                    <strong>Descripción</strong>
+                    <p>Mejorá el texto que ven los huéspedes en el listado.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                </div>
+                <div>
+                    <strong>Sin interrupciones</strong>
+                    <p>El hotel sigue activo mientras lo editás.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel panel-auth">
+        <div class="panel-header">
+            <h2>{{ titulo }}</h2>
+        </div>
+
+        <form method="post" class="form-stack" id="form-modificar-hotel">
+            {% csrf_token %}
+
+            <label for="id_nombre_mod">
+                Nombre del hotel
+                <input
+                    id="id_nombre_mod"
+                    type="text"
+                    name="nombre"
+                    value="{{ form.nombre.value|default:'' }}"
+                    placeholder="Ej: Hotel Costa Azul"
+                    required
+                >
+                {% if form.nombre.errors %}
+                    <span class="form-error">{{ form.nombre.errors|join:", " }}</span>
+                {% endif %}
+            </label>
+
+            <div class="form-row">
+                <label for="id_calle_mod">
+                    Calle
+                    <input
+                        id="id_calle_mod"
+                        type="text"
+                        name="calle"
+                        value="{{ form.calle.value|default:'' }}"
+                        placeholder="Av. Colón"
+                        required
+                    >
+                    {% if form.calle.errors %}
+                        <span class="form-error">{{ form.calle.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+
+                <label for="id_numero_calle_mod">
+                    Número
+                    <input
+                        id="id_numero_calle_mod"
+                        type="text"
+                        name="numero_calle"
+                        value="{{ form.numero_calle.value|default:'' }}"
+                        placeholder="1234"
+                        required
+                    >
+                    {% if form.numero_calle.errors %}
+                        <span class="form-error">{{ form.numero_calle.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+            </div>
+
+            <label for="id_descripcion_mod">
+                Descripción
+                <textarea
+                    id="id_descripcion_mod"
+                    name="descripcion"
+                    rows="4"
+                    placeholder="Servicios, ubicación, comodidades principales..."
+                    required
+                >{{ form.descripcion.value|default:'' }}</textarea>
+                {% if form.descripcion.errors %}
+                    <span class="form-error">{{ form.descripcion.errors|join:", " }}</span>
+                {% endif %}
+            </label>
+
+            <button class="button button-primary button-full" id="btn-guardar-hotel" type="submit">
+                {{ boton }}
+            </button>
+        </form>
+
+        <p class="panel-footer"><a href="{% url 'mis_hoteles' %}">Volver a mis hoteles</a></p>
+    </section>
+</main>
+{% endblock %}

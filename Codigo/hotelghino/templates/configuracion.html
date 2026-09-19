@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuracion - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="page-narrow">
+    <section class="panel">
+        <div class="panel-header">
+            <h1>Configuracion</h1>
+            <p>Administra tus datos personales y el acceso a la plataforma.</p>
+        </div>
+
+        <div class="action-list">
+            <a class="button button-primary" href="{% url 'modificar_usuario' %}">Modificar datos del usuario</a>
+            {% if user.rol == 'H' %}
+                <a class="button button-accent" href="{% url 'propietario' %}">Solicitar rol propietario</a>
+            {% endif %}
+            <a href="{% url 'home' %}">Volver al inicio</a>
+        </div>
+    </section>
+</main>
+{% endblock %}
