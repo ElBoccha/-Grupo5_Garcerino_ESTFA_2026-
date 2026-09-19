@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Mis hoteles - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="page">
+    <section class="section-heading">
+        <div>
+            <h1>Mis hoteles</h1>
+            <p>Alta, modificacion y eliminacion de hoteles y habitaciones.</p>
+        </div>
+        <a class="button button-accent" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
+    </section>
+
+    {% if alojamientos %}
+        <section class="management-list">
+            {% for alojamiento in alojamientos %}
+                <article class="management-card">
+                    {% if 'beto' in alojamiento.nombre|lower or 'tuyu' in alojamiento.nombre|lower or 'andrade' in alojamiento.calle|lower %}
+                        <div class="hotel-card-media media-tuyu"></div>
+                    {% elif 'sorro' in alojamiento.nombre|lower or 'santa clara' in alojamiento.nombre|lower or 'lag tio' in alojamiento.calle|lower %}
+                        <div class="hotel-card-media media-santaclara"></div>
+                    {% endif %}
+                    <div class="management-header">
+                        <div>
+                            <span class="status-pill status-pill--{% if alojamiento.estado == 'A' %}activo{% elif alojamiento.estado == 'P' %}pendiente{% else %}rechazado{% endif %}">{{ alojamiento.get_estado_display }}</span>
+                            <h2>{{ alojamiento.nombre }}</h2>
+                            <p>{{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
+                            <p>{{ alojamiento.descripcion }}</p>
+                        </div>
+
+                        <div class="actions">
+                            <a class="button button-secondary" href="{% url 'modificar_hotel' alojamiento.id %}">Modificar</a>
+                            <a class="button button-danger" href="{% url 'eliminar_hotel' alojamiento.id %}">Eliminar</a>
+                        </div>
+                    </div>
+
+                    <div class="rooms-block">
+                        <div class="rooms-heading">
+                            <div>
+                                <h3>Habitaciones</h3>
+                                <p>{{ alojamiento.habitacion_set.count }} cargadas</p>
+                            </div>
+                            <a class="button button-secondary" href="{% url 'registrar_habitacion' alojamiento.id %}">Agregar habitacion</a>
+                        </div>
+
+                        {% if alojamiento.habitacion_set.all %}
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Numero</th>
+                                            <th>Piso</th>
+                                            <th>Capacidad</th>
+                                            <th>Tipo</th>
+                                            <th>Precio</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for habitacion in alojamiento.habitacion_set.all %}
+                                            <tr>
+                                                <td>{{ habitacion.numero_habitacion }}</td>
+                                                <td>{{ habitacion.numero_piso }}</td>
+                                                <td>{{ habitacion.capacidad_maxima }}</td>
+                                                <td>{{ habitacion.tipo }}</td>
+                                                <td>${{ habitacion.precio_noche }}</td>
+                                                <td>
+                                                    <div class="table-actions">
+                                                        <a href="{% url 'modificar_habitacion' habitacion.id %}">Modificar</a>
+                                                        <a href="{% url 'eliminar_habitacion' habitacion.id %}">Eliminar</a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="empty-state compact">
+                                <p>Todavia no registraste habitaciones para este hotel.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+        </section>
+    {% else %}
+        <section class="empty-state">
+            <span class="empty-state-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4 8 4v14"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M10 21v-4a2 2 0 0 1 4 0v4"/></svg>
+            </span>
+            <h3>Todavia no registraste hoteles</h3>
+            <p>Cuando cargues uno, lo vas a poder editar y sumar habitaciones desde este panel.</p>
+            <a class="button button-primary" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}

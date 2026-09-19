@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Inicio - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="page">
+    <section class="hero">
+        <div class="hero-copy">
+            <h1>Hoteles de todo el mundo para todos</h1>
+            <p>Busca por ciudad, nombre o direccion y encontra opciones para tu proximo viaje.</p>
+        </div>
+
+        <form class="search-panel" method="get">
+            <label>
+                Destino
+                <input type="text" name="destino" value="{{ destino }}" placeholder="Mar del Tuyu, Santa Clara, Pinamar...">
+            </label>
+            <label>
+                Desde
+                <input type="date" name="desde" value="{{ desde }}">
+            </label>
+            <label>
+                Hasta
+                <input type="date" name="hasta" value="{{ hasta }}">
+            </label>
+            <button class="button button-accent" type="submit">Buscar</button>
+        </form>
+    </section>
+
+    <section class="section-heading">
+        <div>
+            <h2>Hoteles disponibles</h2>
+        </div>
+        <div class="actions">
+            <a class="button button-secondary" href="{% url 'mis_reservas' %}">Mis reservas</a>
+            {% if user.rol == 'P' or user.rol == 'A' %}
+                <a class="button button-primary" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
+                <a class="button button-secondary" href="{% url 'mis_hoteles' %}">Administrar mis hoteles</a>
+            {% else %}
+                <a class="button button-secondary" href="{% url 'propietario' %}">Solicitar ser propietario</a>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if alojamientos %}
+        <!-- Listado de hoteles disponibles -->
+        <section class="hotel-grid">
+            {% for alojamiento in alojamientos %}
+                <article class="hotel-card">
+                    {% if 'beto' in alojamiento.nombre|lower or 'tuyu' in alojamiento.nombre|lower or 'andrade' in alojamiento.calle|lower %}
+                        <div class="hotel-card-media media-tuyu">
+                    {% elif 'sorro' in alojamiento.nombre|lower or 'santa clara' in alojamiento.nombre|lower or 'lag tio' in alojamiento.calle|lower %}
+                        <div class="hotel-card-media media-santaclara">
+                    {% else %}
+                        <div class="hotel-card-media media-{% cycle 'coast' 'city' 'lobby' %}">
+                    {% endif %}
+                        <span class="status-pill status-pill--{% if alojamiento.estado == 'A' %}activo{% elif alojamiento.estado == 'P' %}pendiente{% else %}rechazado{% endif %}">{{ alojamiento.get_estado_display }}</span>
+                    </div>
+                    <div class="hotel-card-body">
+                        <h3>{{ alojamiento.nombre }}</h3>
+                        <p>{{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
+                        <p>{{ alojamiento.descripcion|truncatewords:20 }}</p>
+                        <div class="card-meta">
+                            <span>{{ alojamiento.habitacion_set.count }} habitaciones</span>
+                            <span>{{ alojamiento.get_tipo_display }}</span>
+                        </div>
+                        <div class="hotel-card-cta">
+                            <a class="button button-primary" href="{% url 'detalle_hotel' alojamiento.id %}{% if desde or hasta %}?desde={{ desde }}&hasta={{ hasta }}{% endif %}">Ver hotel y reservar</a>
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+        </section>
+    {% else %}
+        <section class="empty-state">
+            <span class="empty-state-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
+            <h3>No encontramos hoteles con esos datos</h3>
+            <p>Proba con otro destino o volve a consultar mas tarde.</p>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}

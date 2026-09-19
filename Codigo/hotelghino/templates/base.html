@@ -1,0 +1,92 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}Hotelghino{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{% static 'images/logo.png' %}">
+    <link rel="stylesheet" href="{% static 'css/style4.css' %}">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Saltar al contenido</a>
+
+    <header class="app-header" id="app-header">
+        <div class="app-header-inner">
+            <a class="brand" href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{% url 'login' %}{% endif %}">
+                <img src="{% static 'images/logo.png' %}" alt="Hotelghino" class="brand-logo-img">
+                <span class="brand-name">Hotelghino</span>
+            </a>
+
+            <button class="nav-toggle" id="nav-toggle" type="button" aria-expanded="false" aria-controls="top-nav">
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+                <span class="sr-only">Abrir menu</span>
+            </button>
+
+            <nav class="top-nav" id="top-nav" aria-label="Navegacion principal">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'home' %}">Inicio</a>
+                    <a href="{% url 'mis_reservas' %}">Mis reservas</a>
+                    {% if user.rol == 'P' or user.rol == 'A' %}
+                        <a href="{% url 'mis_hoteles' %}">Mis hoteles</a>
+                        <a href="{% url 'configuracion' %}">Configuracion</a>
+                        <a class="button button-accent" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
+                    {% else %}
+                        <a href="{% url 'configuracion' %}">Configuracion</a>
+                        <a class="button button-accent" href="{% url 'propietario' %}">Ser propietario</a>
+                    {% endif %}
+                    <form class="logout-form" method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button class="link-button" type="submit">Salir</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}">Ingresar</a>
+                    <a class="button button-accent" href="{% url 'registro' %}">Crear cuenta</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <div class="toast-stack" id="toast-stack" aria-label="Mensajes del sistema">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="toast toast-{{ message.tags|default:'info' }}" role="status">
+                    <span class="toast-icon" aria-hidden="true">
+                        {% if message.tags == 'success' %}
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                        {% elif message.tags == 'error' or message.tags == 'warning' %}
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" y2="12" x2="12"/><line x1="12" y1="16" y2="16.01" x2="12.01"/></svg>
+                        {% else %}
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" y2="16" x2="12"/><line x1="12" y1="8" y2="8.01" x2="12.01"/></svg>
+                        {% endif %}
+                    </span>
+                    <span class="toast-text">{{ message }}</span>
+                    <button class="toast-close" type="button" aria-label="Cerrar mensaje">&times;</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <main id="main-content" tabindex="-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+        <div class="app-footer-inner">
+            <div class="footer-brand">
+                <img src="{% static 'images/logo.png' %}" alt="" class="footer-logo-img" aria-hidden="true">
+                <span>Hotelghino</span>
+            </div>
+            <p class="footer-meta">Proyecto academico &mdash; Grupo 5 &quot;Garcerino&quot;, ESTFA 2026</p>
+        </div>
+    </footer>
+
+    <script src="{% static 'js/app.js' %}" defer></script>
+</body>
+</html>
