@@ -132,6 +132,32 @@
                 {% endif %}
             </label>
 
+            <div class="form-row">
+                <label for="id_disponible" style="display:flex;align-items:center;gap:.75rem;flex-direction:row;min-height:46px;">
+                    <input
+                        id="id_disponible"
+                        type="checkbox"
+                        name="disponible"
+                        {% if form.disponible.value != False %}checked{% endif %}
+                        style="width:auto;margin:0;"
+                    >
+                    <span>Disponible para reservar</span>
+                </label>
+
+                <label for="id_fecha_desocupacion">
+                    No disponible hasta (opcional)
+                    <input
+                        id="id_fecha_desocupacion"
+                        type="date"
+                        name="fecha_desocupacion_automatica"
+                        value="{{ form.fecha_desocupacion_automatica.value|date:'Y-m-d'|default:'' }}"
+                    >
+                    {% if form.fecha_desocupacion_automatica.errors %}
+                        <span class="form-error">{{ form.fecha_desocupacion_automatica.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+            </div>
+
             <button class="button button-primary button-full" id="btn-guardar-habitacion" type="submit">
                 {{ boton }}
             </button>

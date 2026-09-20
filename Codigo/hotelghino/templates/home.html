@@ -32,12 +32,17 @@
             <h2>Hoteles disponibles</h2>
         </div>
         <div class="actions">
-            <a class="button button-secondary" href="{% url 'mis_reservas' %}">Mis reservas</a>
-            {% if user.rol == 'P' or user.rol == 'A' %}
-                <a class="button button-primary" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
-                <a class="button button-secondary" href="{% url 'mis_hoteles' %}">Administrar mis hoteles</a>
+            {% if user.is_authenticated %}
+                <a class="button button-secondary" href="{% url 'mis_reservas' %}">Mis reservas</a>
+                {% if user.rol == 'P' or user.rol == 'A' %}
+                    <a class="button button-primary" href="{% url 'registro_hoteles' %}">Registrar hotel</a>
+                    <a class="button button-secondary" href="{% url 'mis_hoteles' %}">Administrar mis hoteles</a>
+                {% else %}
+                    <a class="button button-secondary" href="{% url 'propietario' %}">Solicitar ser propietario</a>
+                {% endif %}
             {% else %}
-                <a class="button button-secondary" href="{% url 'propietario' %}">Solicitar ser propietario</a>
+                <a class="button button-accent" href="{% url 'registro' %}">Crear cuenta</a>
+                <a class="button button-secondary" href="{% url 'login' %}">Iniciar sesión</a>
             {% endif %}
         </div>
     </section>
@@ -65,7 +70,11 @@
                             <span>{{ alojamiento.get_tipo_display }}</span>
                         </div>
                         <div class="hotel-card-cta">
-                            <a class="button button-primary" href="{% url 'detalle_hotel' alojamiento.id %}{% if desde or hasta %}?desde={{ desde }}&hasta={{ hasta }}{% endif %}">Ver hotel y reservar</a>
+                            {% if user.is_authenticated %}
+                                <a class="button button-primary" href="{% url 'detalle_hotel' alojamiento.id %}{% if desde or hasta %}?desde={{ desde }}&hasta={{ hasta }}{% endif %}">Ver hotel y reservar</a>
+                            {% else %}
+                                <a class="button button-primary" href="{% url 'login' %}?next={% url 'detalle_hotel' alojamiento.id %}">Ver hotel y reservar</a>
+                            {% endif %}
                         </div>
                     </div>
                 </article>

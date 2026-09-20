@@ -46,6 +46,7 @@ urlpatterns = [
     path("mis-hoteles/<int:alojamiento_id>/habitaciones/registrar/", views.registroHabitacion, name="registrar_habitacion"),
     path("habitaciones/<int:habitacion_id>/modificar/", views.modificarHabitacion, name="modificar_habitacion"),
     path("habitaciones/<int:habitacion_id>/eliminar/", views.eliminarHabitacion, name="eliminar_habitacion"),
+    path("habitaciones/<int:habitacion_id>/disponibilidad/", views.toggleDisponibilidadHabitacion, name="toggle_disponibilidad"),
     path("propietario/", views.solicitudPropietario, name="propietario"),
     path("hoteles/<int:alojamiento_id>/", views.detalleHotel, name="detalle_hotel"),
     path("mis-reservas/", views.misReservas, name="mis_reservas"),

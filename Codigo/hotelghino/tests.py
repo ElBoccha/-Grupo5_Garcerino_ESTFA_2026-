@@ -83,7 +83,8 @@ class HotelReservaViewsTest(TestCase):
             rol='H'
         )
 
-    def test_propietario_registra_hotel_y_aparece_en_home(self):
+    def test_propietario_registra_hotel_y_flujo_aprobacion(self):
+        from hotelghino.models import Alojamiento
         self.client.force_login(self.propietario)
         response = self.client.post(reverse('registro_hoteles'), {
             'nombre': 'Grand Hotel Test',
@@ -93,10 +94,90 @@ class HotelReservaViewsTest(TestCase):
         })
         self.assertRedirects(response, reverse('mis_hoteles'))
 
-        # Verificar que aparece en home
+        hotel = Alojamiento.objects.get(nombre='Grand Hotel Test')
+        # 1. El hotel nuevo queda en estado pendiente
+        self.assertEqual(hotel.estado, 'P')
+
+        # 2. No aparece publicado en home mientras esté pendiente
         self.client.force_login(self.huesped)
         home_resp = self.client.get(reverse('home'))
-        self.assertContains(home_resp, 'Grand Hotel Test')
+        self.assertNotContains(home_resp, 'Grand Hotel Test')
+
+        # 3. No se pueden añadir habitaciones mientras esté pendiente
+        self.client.force_login(self.propietario)
+        resp_hab = self.client.post(reverse('registrar_habitacion', args=[hotel.id]), {
+            'numero_habitacion': 101,
+            'numero_piso': 1,
+            'capacidad_maxima': 2,
+            'tipo': 'Simple',
+            'precio_noche': 3000,
+            'disponible': True,
+        })
+        self.assertRedirects(resp_hab, reverse('mis_hoteles'))
+        self.assertEqual(hotel.habitacion_set.count(), 0)
+
+        # 4. Una vez aprobado por admin, se publica en home y permite añadir habitaciones
+        hotel.estado = 'A'
+        hotel.save()
+
+        home_resp_aprobado = self.client.get(reverse('home'))
+        self.assertContains(home_resp_aprobado, 'Grand Hotel Test')
+
+        resp_hab_ok = self.client.post(reverse('registrar_habitacion', args=[hotel.id]), {
+            'numero_habitacion': 101,
+            'numero_piso': 1,
+            'capacidad_maxima': 2,
+            'tipo': 'Simple',
+            'precio_noche': 3000,
+            'disponible': True,
+        })
+        self.assertRedirects(resp_hab_ok, reverse('mis_hoteles'))
+        self.assertEqual(hotel.habitacion_set.count(), 1)
+
+    def test_vista_invitado_home_y_redireccion_login_al_reservar(self):
+        from hotelghino.models import Alojamiento
+        hotel = Alojamiento.objects.create(
+            nombre='Hotel para Invitados',
+            calle='Costanera',
+            numero_calle='100',
+            descripcion='Hotel frente al mar',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+        # El invitado puede ver home sin iniciar sesión
+        self.client.logout()
+        response = self.client.get(reverse('home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hotel para Invitados')
+        self.assertContains(response, 'Ingresar')
+        self.assertContains(response, f"/?next=/hoteles/{hotel.id}/")
+
+        # Al intentar ingresar a detalle del hotel sin login, redirige al login
+        resp_detalle = self.client.get(reverse('detalle_hotel', args=[hotel.id]))
+        self.assertEqual(resp_detalle.status_code, 302)
+        self.assertTrue(resp_detalle.url.startswith('/?next=') or '/login/' in resp_detalle.url)
+
+    def test_admin_ve_notificacion_de_hoteles_pendientes(self):
+        from hotelghino.models import Alojamiento, Usuario
+        admin_user = Usuario.objects.create_user(
+            username='adminuser',
+            email='admin@test.com',
+            password='Password123',
+            dni=99999999,
+            telefono='99999999',
+            rol='A'
+        )
+        Alojamiento.objects.create(
+            nombre='Hotel Pendiente Admin',
+            calle='Calle 1',
+            numero_calle='10',
+            descripcion='Pendiente de aprobacion',
+            id_usuario=self.propietario,
+            estado='P'
+        )
+        self.client.force_login(admin_user)
+        response = self.client.get(reverse('home'))
+        self.assertContains(response, 'Tenés <strong>1</strong> hotel(es) pendiente(s) de aprobación.')
 
     def test_busqueda_hotel_por_destino(self):
         from hotelghino.models import Alojamiento
