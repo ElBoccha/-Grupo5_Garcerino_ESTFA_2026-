@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
+from django.utils import timezone
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import send_mail
@@ -23,7 +24,23 @@ from .models import SolicitudPropietario
 from .models import Reserva
 
 
+def sincronizar_disponibilidad_habitaciones():
+    """
+    Desocupa automáticamente aquellas habitaciones cuya reserva activa ha finalizado
+    (es decir, cuya fecha de finalización es menor o igual a la fecha de hoy).
+    """
+    hoy = timezone.now().date()
+    Habitacion.objects.filter(
+        disponible=False,
+        fecha_desocupacion_automatica__isnull=False,
+        fecha_desocupacion_automatica__lte=hoy
+    ).update(disponible=True, fecha_desocupacion_automatica=None)
+
+
 def registro(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
     if request.method == 'POST':
         form = RegistroUsuario(request.POST)
 
@@ -64,7 +81,10 @@ def recuperar_contrasena(request):
 
                     smtp_configurado = (
                         settings.EMAIL_BACKEND
-                        != 'django.core.mail.backends.console.EmailBackend'
+                        not in (
+                            'django.core.mail.backends.console.EmailBackend',
+                            'django.core.mail.backends.locmem.EmailBackend',
+                        )
                     )
 
                     if smtp_configurado:
@@ -120,15 +140,14 @@ def login_view(request):
     return render(request, 'login.html')
 
 
-@login_required
 def home(request):
     destino = request.GET.get('destino', '').strip()
     desde = request.GET.get('desde', '').strip()
     hasta = request.GET.get('hasta', '').strip()
 
-    # Obtener hoteles activos o pendientes ordenados por fecha
+    # Obtener solo hoteles aprobados (activos) ordenados por fecha
     alojamientos = Alojamiento.objects.filter(
-        Q(estado='A') | Q(estado='P'),
+        estado='A',
         tipo='HT'
     ).prefetch_related('habitacion_set').order_by('-fecha_creacion')
 
@@ -209,10 +228,10 @@ def registroAlojamiento(request):
         if form.is_valid():
             alojamiento = form.save(commit=False)
             alojamiento.tipo = 'HT'
-            alojamiento.estado = 'A'
+            alojamiento.estado = 'P'
             alojamiento.id_usuario = request.user
             alojamiento.save()
-            messages.success(request, 'Hotel registrado correctamente. Ya podes cargar sus habitaciones.')
+            messages.success(request, 'Hotel registrado correctamente. Queda en estado pendiente hasta la aprobación del administrador.')
             return redirect('mis_hoteles')
     else:
         form = RegistroAlojamiento()
@@ -225,6 +244,8 @@ def misHoteles(request):
     if request.user.rol not in ['P', 'A']:
         messages.warning(request, 'Solo los propietarios pueden administrar hoteles.')
         return redirect('home')
+
+    sincronizar_disponibilidad_habitaciones()
 
     alojamientos = Alojamiento.objects.filter(
         id_usuario=request.user,
@@ -304,6 +325,10 @@ def registroHabitacion(request, alojamiento_id):
         id_usuario=request.user,
         tipo='HT'
     )
+
+    if alojamiento.estado != 'A':
+        messages.warning(request, 'No podés agregar habitaciones a un hotel que está pendiente de aprobación.')
+        return redirect('mis_hoteles')
 
     if request.method == 'POST':
         form = HabitacionForm(request.POST)
@@ -423,16 +448,57 @@ def solicitudPropietario(request):
 
 @login_required
 def detalleHotel(request, alojamiento_id):
-    # Cargar datos del hotel y sus habitaciones asociadas
+    sincronizar_disponibilidad_habitaciones()
     alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id)
     habitaciones = Habitacion.objects.filter(id_alohamiento=alojamiento).order_by('numero_habitacion')
 
-    desde = request.GET.get('desde', '').strip()
-    hasta = request.GET.get('hasta', '').strip()
+    desde = request.GET.get('desde', '').strip() or request.POST.get('fecha_inicio', '').strip()
+    hasta = request.GET.get('hasta', '').strip() or request.POST.get('fecha_finalizacion', '').strip()
+
+    # Calcular disponibilidad de habitaciones para el rango de fechas dado
+    fechas_validas = False
+    d_inicio = None
+    d_fin = None
+    ids_ocupadas_por_reserva = set()
+
+    if desde and hasta:
+        try:
+            d_inicio = datetime.strptime(desde, '%Y-%m-%d').date()
+            d_fin = datetime.strptime(hasta, '%Y-%m-%d').date()
+            if d_inicio < d_fin:
+                fechas_validas = True
+                # IDs de habitaciones con reservas solapadas (no canceladas)
+                ids_ocupadas_por_reserva = set(
+                    Reserva.objects.filter(
+                        id_alohamiento=alojamiento,
+                        fecha_inicio__lt=d_fin,
+                        fecha_finalizacion__gt=d_inicio
+                    ).exclude(estado='Cancelada').values_list('id_habitacion_id', flat=True)
+                )
+        except ValueError:
+            pass
+
+    # Anotar cada habitación con su estado para las fechas pedidas
+    habitaciones_con_estado = []
+    habitaciones_disponibles_ids = []
+    for hab in habitaciones:
+        if fechas_validas:
+            # Ocupada si: el propietario la marcó manualmente como no disponible,
+            # O si tiene una reserva solapada en esas fechas
+            ocupada = (not hab.disponible) or (hab.id in ids_ocupadas_por_reserva)
+        else:
+            # Sin fechas: mostrar estado manual del propietario
+            ocupada = not hab.disponible
+        hab.esta_disponible = not ocupada
+        habitaciones_con_estado.append(hab)
+        if not ocupada:
+            habitaciones_disponibles_ids.append(hab.id)
+
+    habitaciones_disponibles_qs = habitaciones.filter(id__in=habitaciones_disponibles_ids)
 
     if request.method == 'POST':
         form = ReservaForm(request.POST)
-        form.fields['id_habitacion'].queryset = habitaciones
+        form.fields['id_habitacion'].queryset = habitaciones_disponibles_qs
 
         if form.is_valid():
             habitacion = form.cleaned_data['id_habitacion']
@@ -449,7 +515,9 @@ def detalleHotel(request, alojamiento_id):
                 fecha_finalizacion__gt=fecha_inicio
             ).exclude(estado='Cancelada').exists()
 
-            if solapada:
+            if not habitacion.disponible:
+                messages.error(request, 'La habitacion seleccionada no esta disponible para reservar.')
+            elif solapada:
                 messages.error(request, 'La habitacion seleccionada no esta disponible para las fechas ingresadas.')
             else:
                 dias = (fecha_finalizacion - fecha_inicio).days
@@ -464,6 +532,11 @@ def detalleHotel(request, alojamiento_id):
                     id_usuario=request.user,
                     id_habitacion=habitacion
                 )
+                # Marcar habitación como no disponible automáticamente y fijar desocupación al terminar
+                habitacion.disponible = False
+                habitacion.fecha_desocupacion_automatica = fecha_finalizacion
+                habitacion.save(update_fields=['disponible', 'fecha_desocupacion_automatica'])
+
                 messages.success(request, f'¡Reserva confirmada en {alojamiento.nombre} para la habitacion {habitacion.numero_habitacion}! Total abonado: ${pago}.')
                 return redirect('mis_reservas')
     else:
@@ -480,14 +553,18 @@ def detalleHotel(request, alojamiento_id):
                 pass
 
         form = ReservaForm(initial=initial_data)
-        form.fields['id_habitacion'].queryset = habitaciones
+        form.fields['id_habitacion'].queryset = habitaciones_disponibles_qs
 
     return render(request, 'detalle-hotel.html', {
         'alojamiento': alojamiento,
-        'habitaciones': habitaciones,
+        'habitaciones': habitaciones_con_estado,
+        'habitaciones_disponibles': habitaciones_disponibles_qs,
         'form': form,
         'desde': desde,
         'hasta': hasta,
+        'fechas_validas': fechas_validas,
+        'd_inicio': d_inicio,
+        'd_fin': d_fin,
     })
 
 
@@ -507,6 +584,23 @@ def cancelarReserva(request, reserva_id):
     if request.method == 'POST':
         reserva.estado = 'Cancelada'
         reserva.save()
+
+        # Liberar habitación automáticamente si no quedan reservas activas vigentes o futuras
+        habitacion = reserva.id_habitacion
+        hoy = timezone.now().date()
+        proxima_reserva = Reserva.objects.filter(
+            id_habitacion=habitacion,
+            fecha_finalizacion__gt=hoy
+        ).exclude(estado='Cancelada').exclude(pk=reserva.pk).order_by('fecha_finalizacion').last()
+
+        if proxima_reserva:
+            habitacion.fecha_desocupacion_automatica = proxima_reserva.fecha_finalizacion
+            habitacion.save(update_fields=['fecha_desocupacion_automatica'])
+        else:
+            habitacion.disponible = True
+            habitacion.fecha_desocupacion_automatica = None
+            habitacion.save(update_fields=['disponible', 'fecha_desocupacion_automatica'])
+
         messages.success(request, 'Reserva cancelada correctamente.')
         return redirect('mis_reservas')
 
@@ -515,4 +609,33 @@ def cancelarReserva(request, reserva_id):
         'objeto': f'Reserva en {reserva.id_alohamiento.nombre} ({reserva.fecha_inicio} al {reserva.fecha_finalizacion})',
         'cancelar_url': 'mis_reservas',
     })
+
+
+@login_required
+def toggleDisponibilidadHabitacion(request, habitacion_id):
+    """
+    Permite al propietario cambiar el estado de disponibilidad de una habitacion
+    con un solo POST. Accesible solo para propietarios dueños de la habitacion.
+    """
+    if request.user.rol not in ['P', 'A']:
+        messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
+        return redirect('home')
+
+    habitacion = get_object_or_404(
+        Habitacion,
+        pk=habitacion_id,
+        id_usuario=request.user,
+        id_alohamiento__id_usuario=request.user,
+        id_alohamiento__tipo='HT'
+    )
+
+    if request.method == 'POST':
+        habitacion.disponible = not habitacion.disponible
+        habitacion.fecha_desocupacion_automatica = None
+        habitacion.save(update_fields=['disponible', 'fecha_desocupacion_automatica'])
+        estado = 'disponible' if habitacion.disponible else 'no disponible'
+        messages.success(request, f'Habitacion {habitacion.numero_habitacion} marcada como {estado}.')
+        return redirect('mis_hoteles')
+
+    return redirect('mis_hoteles')
 

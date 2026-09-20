@@ -91,6 +91,15 @@ class Habitacion(models.Model):
     capacidad_maxima = models.IntegerField()
     tipo = models.CharField(max_length=20)
     precio_noche = models.IntegerField()
+    disponible = models.BooleanField(
+        default=True,
+        help_text='Indica si la habitacion esta disponible para ser reservada. El propietario puede cambiarlo manualmente.'
+    )
+    fecha_desocupacion_automatica = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Fecha en la que finaliza la reserva activa para desocupar la habitacion automaticamente.'
+    )
     id_alohamiento = models.ForeignKey(Alojamiento, on_delete=models.CASCADE)
     id_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
 

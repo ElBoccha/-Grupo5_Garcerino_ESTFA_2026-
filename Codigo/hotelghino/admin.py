@@ -138,8 +138,8 @@ class AlojamientoAdmin(admin.ModelAdmin):
         return redirect('admin:hotelghino_alojamiento_changelist')
 
 class HabitacionAdmin(admin.ModelAdmin):
-    list_display = ('numero_habitacion', 'numero_piso', 'capacidad_maxima', 'tipo', 'precio_noche', 'id_alohamiento', 'id_usuario')
-    list_filter = ('tipo',)
+    list_display = ('numero_habitacion', 'numero_piso', 'capacidad_maxima', 'tipo', 'precio_noche', 'disponible', 'id_alohamiento', 'id_usuario')
+    list_filter = ('tipo', 'disponible')
     search_fields = ('id_usuario__username',)
 
 class PromocionAdmin(admin.ModelAdmin):

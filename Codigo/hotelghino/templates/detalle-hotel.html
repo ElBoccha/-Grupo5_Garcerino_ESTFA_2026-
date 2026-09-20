@@ -32,12 +32,37 @@
                 </div>
             </div>
 
-            <!-- Bloque de habitaciones disponibles -->
+            <!-- Consulta de disponibilidad de fechas -->
             <div class="rooms-block">
                 <div class="rooms-heading">
                     <div>
-                        <h3>Habitaciones disponibles</h3>
-                        <p>{{ habitaciones.count }} habitaciones registradas</p>
+                        <h3>Consultar disponibilidad</h3>
+                        <p>Seleccioná tus fechas de estadía para ver qué habitaciones podés reservar.</p>
+                    </div>
+                </div>
+                <form method="get" action="{% url 'detalle_hotel' alojamiento.id %}" class="search-panel" style="margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+                    <label>
+                        Fecha de ingreso
+                        <input type="date" name="desde" value="{{ desde }}" required min="{% now 'Y-m-d' %}">
+                    </label>
+                    <label>
+                        Fecha de salida
+                        <input type="date" name="hasta" value="{{ hasta }}" required min="{% now 'Y-m-d' %}">
+                    </label>
+                    <button type="submit" class="button button-accent" style="align-self: flex-end;">Ver disponibilidad</button>
+                </form>
+            </div>
+
+            <!-- Bloque de habitaciones -->
+            <div class="rooms-block">
+                <div class="rooms-heading">
+                    <div>
+                        <h3>Habitaciones</h3>
+                        {% if fechas_validas %}
+                            <p>{{ habitaciones|length }} habitaciones — disponibilidad para {{ d_inicio }} al {{ d_fin }}</p>
+                        {% else %}
+                            <p>{{ habitaciones|length }} habitaciones registradas</p>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -51,6 +76,7 @@
                                     <th>Capacidad</th>
                                     <th>Tipo</th>
                                     <th>Precio por noche</th>
+                                    <th>Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -61,6 +87,13 @@
                                         <td>{{ hab.capacidad_maxima }} personas</td>
                                         <td>{{ hab.tipo }}</td>
                                         <td><strong>${{ hab.precio_noche }}</strong></td>
+                                        <td>
+                                            {% if hab.esta_disponible %}
+                                                <span class="status-pill status-pill--activo">Disponible</span>
+                                            {% else %}
+                                                <span class="status-pill status-pill--rechazado">Ocupada</span>
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
@@ -74,10 +107,12 @@
             </div>
         </article>
 
-        {% if habitaciones %}
+        {% if habitaciones_disponibles and fechas_validas %}
             <article class="panel">
-                <h2>Realizar Reserva</h2>
-                <p>Selecciona la habitacion y las fechas en las que deseas hospedarte.</p>
+                <div class="panel-header">
+                    <h2>Realizar Reserva</h2>
+                    <p>Seleccioná una habitación disponible para tus fechas del <strong>{{ d_inicio }}</strong> al <strong>{{ d_fin }}</strong>.</p>
+                </div>
 
                 <form method="post" class="form-stack">
                     {% csrf_token %}
@@ -85,7 +120,7 @@
                     <label for="{{ form.id_habitacion.id_for_label }}">
                         {{ form.id_habitacion.label }}
                         <select name="id_habitacion" id="{{ form.id_habitacion.id_for_label }}" required>
-                            {% for hab in habitaciones %}
+                            {% for hab in habitaciones_disponibles %}
                                 <option value="{{ hab.id }}" {% if form.id_habitacion.value|add:0 == hab.id %}selected{% endif %}>
                                     Habitacion {{ hab.numero_habitacion }} ({{ hab.tipo }}, {{ hab.capacidad_maxima }} pers.) - ${{ hab.precio_noche }}/noche
                                 </option>
@@ -98,7 +133,14 @@
 
                     <label for="{{ form.fecha_inicio.id_for_label }}">
                         {{ form.fecha_inicio.label }}
-                        {{ form.fecha_inicio }}
+                        <input
+                            type="date"
+                            name="fecha_inicio"
+                            id="{{ form.fecha_inicio.id_for_label }}"
+                            value="{{ desde }}"
+                            readonly
+                            required
+                        >
                         {% if form.fecha_inicio.errors %}
                             <span class="form-error">{{ form.fecha_inicio.errors.0 }}</span>
                         {% endif %}
@@ -106,7 +148,14 @@
 
                     <label for="{{ form.fecha_finalizacion.id_for_label }}">
                         {{ form.fecha_finalizacion.label }}
-                        {{ form.fecha_finalizacion }}
+                        <input
+                            type="date"
+                            name="fecha_finalizacion"
+                            id="{{ form.fecha_finalizacion.id_for_label }}"
+                            value="{{ hasta }}"
+                            readonly
+                            required
+                        >
                         {% if form.fecha_finalizacion.errors %}
                             <span class="form-error">{{ form.fecha_finalizacion.errors.0 }}</span>
                         {% endif %}
@@ -122,6 +171,20 @@
 
                     <button type="submit" class="button button-primary">Confirmar Reserva</button>
                 </form>
+            </article>
+        {% elif habitaciones and not fechas_validas %}
+            <article class="panel">
+                <div class="panel-header">
+                    <h2>Realizar Reserva</h2>
+                    <p>Ingresá tus fechas de ingreso y salida en el panel de arriba para consultar disponibilidad y reservar tu habitación.</p>
+                </div>
+            </article>
+        {% elif habitaciones and fechas_validas and not habitaciones_disponibles %}
+            <article class="panel">
+                <div class="panel-header">
+                    <h2>Sin disponibilidad</h2>
+                    <p>No hay habitaciones disponibles para las fechas seleccionadas ({{ d_inicio }} al {{ d_fin }}). Podés consultar con otras fechas en el panel superior.</p>
+                </div>
             </article>
         {% endif %}
     </div>

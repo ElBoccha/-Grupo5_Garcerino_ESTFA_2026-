@@ -123,6 +123,18 @@ class HabitacionForm(forms.ModelForm):
     )
 
     tipo = forms.ChoiceField(choices=TIPOS_HABITACION, label='Tipo de habitacion')
+    disponible = forms.BooleanField(
+        label='Disponible para reservar',
+        required=False,
+        initial=True,
+        help_text='Destildá esta opcion para marcar la habitacion como no disponible.'
+    )
+    fecha_desocupacion_automatica = forms.DateField(
+        label='No disponible hasta (opcional)',
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        help_text='Si no está disponible, podés indicar hasta qué fecha para desocuparla automáticamente.'
+    )
 
     class Meta:
         model = Habitacion
@@ -132,6 +144,8 @@ class HabitacionForm(forms.ModelForm):
             "capacidad_maxima",
             "tipo",
             "precio_noche",
+            "disponible",
+            "fecha_desocupacion_automatica",
         ]
         labels = {
             "numero_habitacion": "Numero de habitacion",
@@ -139,6 +153,8 @@ class HabitacionForm(forms.ModelForm):
             "capacidad_maxima": "Capacidad maxima",
             "tipo": "Tipo de habitacion",
             "precio_noche": "Precio por noche",
+            "disponible": "Disponible para reservar",
+            "fecha_desocupacion_automatica": "No disponible hasta (opcional)",
         }
 
     def clean(self):

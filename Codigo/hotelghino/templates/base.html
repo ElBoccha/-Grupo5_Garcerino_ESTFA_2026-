@@ -17,7 +17,7 @@
 
     <header class="app-header" id="app-header">
         <div class="app-header-inner">
-            <a class="brand" href="{% if user.is_authenticated %}{% url 'home' %}{% else %}{% url 'login' %}{% endif %}">
+            <a class="brand" href="{% url 'home' %}">
                 <img src="{% static 'images/logo.png' %}" alt="Hotelghino" class="brand-logo-img">
                 <span class="brand-name">Hotelghino</span>
             </a>
@@ -41,6 +41,14 @@
                         <a href="{% url 'configuracion' %}">Configuracion</a>
                         <a class="button button-accent" href="{% url 'propietario' %}">Ser propietario</a>
                     {% endif %}
+                    {% if user.rol == 'A' %}
+                        <a href="/admin/hotelghino/alojamiento/?estado__exact=P" class="nav-admin-link" title="Panel administrador - Hoteles pendientes">
+                            Admin
+                            {% if pending_hotels_count > 0 %}
+                                <span class="admin-notification-badge">{{ pending_hotels_count }}</span>
+                            {% endif %}
+                        </a>
+                    {% endif %}
                     <form class="logout-form" method="post" action="{% url 'logout' %}">
                         {% csrf_token %}
                         <button class="link-button" type="submit">Salir</button>
@@ -52,6 +60,16 @@
             </nav>
         </div>
     </header>
+
+    {% if user.is_authenticated and user.rol == 'A' and pending_hotels_count > 0 %}
+        <aside class="admin-alert-banner">
+            <div class="admin-alert-inner">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>Tenés <strong>{{ pending_hotels_count }}</strong> hotel(es) pendiente(s) de aprobación.</span>
+                <a href="/admin/hotelghino/alojamiento/?estado__exact=P" class="admin-alert-action">Revisar y aprobar &rarr;</a>
+            </div>
+        </aside>
+    {% endif %}
 
     <div class="toast-stack" id="toast-stack" aria-label="Mensajes del sistema">
         {% if messages %}

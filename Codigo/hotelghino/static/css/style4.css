@@ -659,8 +659,8 @@ label,
 }
 
 .brand-logo-img {
-    height: 42px;
-    width: 42px;
+    height: 56px;
+    width: 56px;
     object-fit: contain;
     display: inline-block;
     transition: transform var(--dur-base) var(--ease-out-back);
@@ -1786,4 +1786,74 @@ tbody tr:last-child td {
     .hero::before {
         animation: none;
     }
+}
+
+/* ---------------------------------------------------------------
+   Admin notification & banner
+   --------------------------------------------------------------- */
+
+.nav-admin-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700 !important;
+    color: var(--blue-600) !important;
+}
+
+.admin-notification-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: var(--radius-full);
+    background: var(--coral-500);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    animation: pulse-soft 2s infinite ease-in-out;
+}
+
+@keyframes pulse-soft {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+}
+
+.admin-alert-banner {
+    background: var(--amber-50);
+    border-bottom: 1px solid var(--amber-100);
+    padding: 10px 20px;
+}
+
+.admin-alert-inner {
+    width: min(1180px, calc(100% - 40px));
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--amber-600);
+}
+
+.admin-alert-inner svg {
+    color: var(--amber-500);
+    flex-shrink: 0;
+}
+
+.admin-alert-inner strong {
+    color: var(--ink);
+}
+
+.admin-alert-action {
+    margin-left: auto;
+    font-weight: 700;
+    color: var(--coral-600);
+    text-decoration: underline;
+    font-size: 13.5px;
+}
+
+.admin-alert-action:hover {
+    color: var(--coral-700);
 }
