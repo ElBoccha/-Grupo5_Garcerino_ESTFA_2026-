@@ -125,14 +125,20 @@ def recuperar_contrasena(request):
 
 
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
     if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
 
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
             login(request, user)
+            next_url = request.POST.get('next') or request.GET.get('next')
+            if next_url:
+                return redirect(next_url)
             return redirect('home')
 
         return render(request, 'login.html', {"error": "Usuario o contrasena incorrectos"})

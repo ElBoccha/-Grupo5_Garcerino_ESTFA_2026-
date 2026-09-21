@@ -20,8 +20,9 @@ from django.urls import path, reverse_lazy
 from hotelghino import views
 
 urlpatterns = [
-    path('', views.login_view, name='login'),
-    path('home/', views.home, name='home'),
+    path('', views.home, name='home'),
+    path('home/', views.home),
+    path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('registro/', views.registro, name='registro'),
     path('recuperar-contrasena/', views.recuperar_contrasena, name='password_reset'),
