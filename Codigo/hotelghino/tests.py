@@ -144,18 +144,22 @@ class HotelReservaViewsTest(TestCase):
             id_usuario=self.propietario,
             estado='A'
         )
-        # El invitado puede ver home sin iniciar sesión
+        # El invitado puede ver home accediendo a la ruta raíz '/' por defecto
         self.client.logout()
-        response = self.client.get(reverse('home'))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Hotel para Invitados')
-        self.assertContains(response, 'Ingresar')
-        self.assertContains(response, f"/?next=/hoteles/{hotel.id}/")
+        response_root = self.client.get('/')
+        self.assertEqual(response_root.status_code, 200)
+        self.assertContains(response_root, 'Hotel para Invitados')
+        self.assertContains(response_root, 'Ingresar')
+        self.assertContains(response_root, f"/login/?next=/hoteles/{hotel.id}/")
+
+        # Acceder a '/home/' también funciona
+        response_home = self.client.get('/home/')
+        self.assertEqual(response_home.status_code, 200)
 
         # Al intentar ingresar a detalle del hotel sin login, redirige al login
         resp_detalle = self.client.get(reverse('detalle_hotel', args=[hotel.id]))
         self.assertEqual(resp_detalle.status_code, 302)
-        self.assertTrue(resp_detalle.url.startswith('/?next=') or '/login/' in resp_detalle.url)
+        self.assertTrue(resp_detalle.url.startswith('/login/?next='))
 
     def test_admin_ve_notificacion_de_hoteles_pendientes(self):
         from hotelghino.models import Alojamiento, Usuario
