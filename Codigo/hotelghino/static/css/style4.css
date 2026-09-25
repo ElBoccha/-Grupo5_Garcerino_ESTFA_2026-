@@ -323,12 +323,12 @@ button {
 }
 
 .button-accent {
-    background: var(--coral-500);
+    background: var(--blue-500);
 }
 
 .button-accent:hover {
-    background: var(--coral-600);
-    box-shadow: var(--shadow-coral);
+    background: var(--blue-600);
+    box-shadow: var(--shadow-blue);
 }
 
 .button-secondary {
