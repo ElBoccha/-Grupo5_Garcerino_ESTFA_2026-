@@ -897,7 +897,7 @@ label,
     bottom: -15%;
     z-index: -2;
     background:
-        radial-gradient(45% 55% at 22% 18%, rgba(255, 107, 74, 0.55), transparent 60%),
+        radial-gradient(45% 55% at 22% 18%, rgba(42, 79, 224, 0.55), transparent 60%),
         radial-gradient(40% 50% at 78% 22%, rgba(13, 182, 166, 0.38), transparent 62%),
         linear-gradient(135deg, #1f2f78 0%, #16224f 55%, #101a3d 100%);
     will-change: transform;
