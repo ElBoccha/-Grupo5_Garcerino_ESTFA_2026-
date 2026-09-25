@@ -23,12 +23,12 @@
     --blue-600: #1f3fc4;
     --blue-700: #172f99;
 
-    /* Sunset coral — the energy accent, main conversion CTAs */
-    --coral-50: #fff1ec;
-    --coral-100: #ffddd0;
-    --coral-500: #ff6b4a;
-    --coral-600: #e8542f;
-    --coral-700: #c23f20;
+    /* Brand accent — blue from logo */
+    --coral-50: var(--blue-50);
+    --coral-100: var(--blue-100);
+    --coral-500: var(--blue-500);
+    --coral-600: var(--blue-600);
+    --coral-700: var(--blue-700);
 
     /* Teal — positive / active / availability */
     --teal-50: #e6faf6;
@@ -62,7 +62,7 @@
     --shadow-md: 0 16px 34px -10px rgba(16, 26, 51, 0.16);
     --shadow-lg: 0 30px 60px -18px rgba(16, 26, 51, 0.24);
     --shadow-blue: 0 14px 28px -10px rgba(42, 79, 224, 0.38);
-    --shadow-coral: 0 14px 28px -10px rgba(255, 107, 74, 0.4);
+    --shadow-coral: var(--shadow-blue);
     --shadow: var(--shadow-md);
 
     /* Shape */
