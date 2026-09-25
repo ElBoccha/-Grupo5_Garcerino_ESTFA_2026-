@@ -701,7 +701,7 @@ label,
     bottom: 2px;
     height: 2px;
     border-radius: var(--radius-full);
-    background: var(--coral-500);
+    background: var(--blue-500);
     transform: scaleX(0);
     transform-origin: left;
     transition: transform var(--dur-base) var(--ease-out-expo);
