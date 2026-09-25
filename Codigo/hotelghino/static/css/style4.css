@@ -72,7 +72,7 @@
     --radius-full: 999px;
 
     /* Type */
-    --font-display: "Manrope", "Segoe UI", system-ui, sans-serif;
+    --font-display: "Montserrat", "Manrope", "Segoe UI", system-ui, sans-serif;
     --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
 
     /* Motion */
@@ -954,12 +954,20 @@ label,
     background: rgba(255, 255, 255, 0.97);
     backdrop-filter: blur(6px);
     box-shadow: var(--shadow-lg);
+    font-family: var(--font-display);
     animation: rise-in var(--dur-slow) var(--ease-out-expo) both;
     animation-delay: 120ms;
 }
 
 .search-panel label {
     color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 700;
+}
+
+.search-panel input {
+    font-family: var(--font-display);
+    font-weight: 600;
 }
 
 @keyframes rise-in {
