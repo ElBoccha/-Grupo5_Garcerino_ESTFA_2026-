@@ -16,12 +16,15 @@ from .forms import RegistroUsuario
 from .forms import ModificarUsuarioForm
 from .forms import RegistroAlojamiento
 from .forms import HabitacionForm
+from .forms import HabitacionLoteForm
 from .forms import SolicitudPropietarioForm
 from .forms import ReservaForm
 from .models import Alojamiento
 from .models import Habitacion
 from .models import SolicitudPropietario
 from .models import Reserva
+from .models import ServicioAlojamiento
+from .models import ImagenAlojamiento
 
 
 def sincronizar_disponibilidad_habitaciones():
@@ -228,21 +231,94 @@ def registroAlojamiento(request):
         messages.warning(request, 'Primero tenes que solicitar ser propietario y esperar la aprobacion.')
         return redirect('propietario')
 
-    if request.method == 'POST':
-        form = RegistroAlojamiento(request.POST)
+    # Asegurar que los servicios predefinidos existen en la base de datos
+    if not ServicioAlojamiento.objects.exists():
+        ServicioAlojamiento.poblar_servicios()
 
-        if form.is_valid():
+    if request.method == 'POST':
+        form = RegistroAlojamiento(request.POST, request.FILES)
+        lote_form = HabitacionLoteForm(request.POST)
+        agregar_lote = request.POST.get('agregar_habitaciones') == '1'
+
+        form_ok = form.is_valid()
+        lote_ok = (not agregar_lote) or lote_form.is_valid()
+
+        if form_ok and lote_ok:
             alojamiento = form.save(commit=False)
             alojamiento.tipo = 'HT'
             alojamiento.estado = 'P'
             alojamiento.id_usuario = request.user
             alojamiento.save()
-            messages.success(request, 'Hotel registrado correctamente. Queda en estado pendiente hasta la aprobación del administrador.')
+            # Guardar la relación M2M de servicios
+            form.save_m2m()
+
+            # Imagen principal
+            imagen_principal = request.FILES.get('imagen_principal')
+            if imagen_principal:
+                # Eliminar portada previa si existe
+                ImagenAlojamiento.objects.filter(
+                    alojamiento=alojamiento, es_principal=True
+                ).delete()
+                ImagenAlojamiento.objects.create(
+                    alojamiento=alojamiento,
+                    imagen=imagen_principal,
+                    es_principal=True,
+                    orden=0,
+                )
+
+            # Imágenes extra (múltiples archivos)
+            imagenes_extra = request.FILES.getlist('imagenes_extra')
+            imagenes_existentes = ImagenAlojamiento.objects.filter(
+                alojamiento=alojamiento, es_principal=False
+            ).count()
+            permitidas = max(0, 10 - imagenes_existentes)
+            for i, img in enumerate(imagenes_extra[:permitidas]):
+                ImagenAlojamiento.objects.create(
+                    alojamiento=alojamiento,
+                    imagen=img,
+                    es_principal=False,
+                    orden=imagenes_existentes + i + 1,
+                )
+            if len(imagenes_extra) > permitidas:
+                messages.warning(request, f'Solo se cargaron {permitidas} imágenes extra (límite: 10).')
+
+            # Habitaciones en lote
+            if agregar_lote and lote_ok:
+                lote = lote_form.cleaned_data
+                creadas = 0
+                for num in range(lote['hab_desde'], lote['hab_hasta'] + 1):
+                    if not Habitacion.objects.filter(
+                        id_alohamiento=alojamiento,
+                        numero_habitacion=num
+                    ).exists():
+                        Habitacion.objects.create(
+                            numero_habitacion=num,
+                            numero_piso=lote['numero_piso'],
+                            capacidad_maxima=lote['capacidad_maxima'],
+                            tipo=lote['tipo'],
+                            precio_noche=lote['precio_noche'],
+                            disponible=True,
+                            id_alohamiento=alojamiento,
+                            id_usuario=request.user,
+                        )
+                        creadas += 1
+                messages.success(
+                    request,
+                    f'Hotel registrado. Se crearon {creadas} habitaciones (N° {lote["hab_desde"]} a {lote["hab_hasta"]}).'
+                )
+            else:
+                messages.success(request, 'Hotel registrado correctamente. Queda en estado pendiente hasta la aprobación del administrador.')
+
             return redirect('mis_hoteles')
     else:
         form = RegistroAlojamiento()
+        lote_form = HabitacionLoteForm()
 
-    return render(request, 'registro-hoteles.html', {'form': form})
+    return render(request, 'registro-hoteles.html', {
+        'form': form,
+        'lote_form': lote_form,
+        'servicios': ServicioAlojamiento.objects.all().order_by('orden'),
+    })
 
 
 @login_required
@@ -275,13 +351,44 @@ def modificarAlojamiento(request, alojamiento_id):
     )
 
     if request.method == 'POST':
-        form = RegistroAlojamiento(request.POST, instance=alojamiento)
+        form = RegistroAlojamiento(request.POST, request.FILES, instance=alojamiento)
 
         if form.is_valid():
             hotel = form.save(commit=False)
             hotel.tipo = 'HT'
             hotel.id_usuario = request.user
             hotel.save()
+            form.save_m2m()
+
+            # Imagen principal (si se carga una nueva, reemplaza la anterior)
+            imagen_principal = request.FILES.get('imagen_principal')
+            if imagen_principal:
+                ImagenAlojamiento.objects.filter(
+                    alojamiento=hotel, es_principal=True
+                ).delete()
+                ImagenAlojamiento.objects.create(
+                    alojamiento=hotel,
+                    imagen=imagen_principal,
+                    es_principal=True,
+                    orden=0,
+                )
+
+            # Imágenes extra
+            imagenes_extra = request.FILES.getlist('imagenes_extra')
+            imagenes_existentes = ImagenAlojamiento.objects.filter(
+                alojamiento=hotel, es_principal=False
+            ).count()
+            permitidas = max(0, 10 - imagenes_existentes)
+            for i, img in enumerate(imagenes_extra[:permitidas]):
+                ImagenAlojamiento.objects.create(
+                    alojamiento=hotel,
+                    imagen=img,
+                    es_principal=False,
+                    orden=imagenes_existentes + i + 1,
+                )
+            if len(imagenes_extra) > permitidas:
+                messages.warning(request, f'Solo se cargaron {permitidas} imágenes extra (límite: 10).')
+
             messages.success(request, 'Hotel modificado correctamente.')
             return redirect('mis_hoteles')
     else:
@@ -291,6 +398,10 @@ def modificarAlojamiento(request, alojamiento_id):
         'form': form,
         'titulo': 'Modificar hotel',
         'boton': 'Guardar cambios',
+        'alojamiento': alojamiento,
+        'servicios': ServicioAlojamiento.objects.all().order_by('orden'),
+        'img_principal': alojamiento.imagenes.filter(es_principal=True).first(),
+        'imgs_extra': alojamiento.imagenes.filter(es_principal=False),
     })
 
 
@@ -332,8 +443,8 @@ def registroHabitacion(request, alojamiento_id):
         tipo='HT'
     )
 
-    if alojamiento.estado != 'A':
-        messages.warning(request, 'No podés agregar habitaciones a un hotel que está pendiente de aprobación.')
+    if alojamiento.estado == 'R':
+        messages.warning(request, 'No podés agregar habitaciones a un hotel rechazado.')
         return redirect('mis_hoteles')
 
     if request.method == 'POST':
@@ -571,6 +682,9 @@ def detalleHotel(request, alojamiento_id):
         'fechas_validas': fechas_validas,
         'd_inicio': d_inicio,
         'd_fin': d_fin,
+        'img_principal': alojamiento.imagenes.filter(es_principal=True).first(),
+        'imgs_galeria': alojamiento.imagenes.filter(es_principal=False).order_by('orden'),
+        'servicios': alojamiento.servicios.all().order_by('orden'),
     })
 
 

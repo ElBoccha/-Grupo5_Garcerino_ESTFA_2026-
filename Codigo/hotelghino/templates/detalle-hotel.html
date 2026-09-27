@@ -16,11 +16,18 @@
 
     <div class="management-list">
         <article class="management-card">
-            {% if 'beto' in alojamiento.nombre|lower or 'tuyu' in alojamiento.nombre|lower or 'andrade' in alojamiento.calle|lower %}
-                <div class="hotel-card-media media-tuyu"></div>
-            {% elif 'sorro' in alojamiento.nombre|lower or 'santa clara' in alojamiento.nombre|lower or 'lag tio' in alojamiento.calle|lower %}
-                <div class="hotel-card-media media-santaclara"></div>
+            {% if img_principal %}
+                <div class="hotel-card-media" style="background-image: url('{{ img_principal.imagen.url }}'); background-position: center; background-size: cover; height: 300px;"></div>
+            {% else %}
+                {% if 'beto' in alojamiento.nombre|lower or 'tuyu' in alojamiento.nombre|lower or 'andrade' in alojamiento.calle|lower %}
+                    <div class="hotel-card-media media-tuyu" style="height: 300px;"></div>
+                {% elif 'sorro' in alojamiento.nombre|lower or 'santa clara' in alojamiento.nombre|lower or 'lag tio' in alojamiento.calle|lower %}
+                    <div class="hotel-card-media media-santaclara" style="height: 300px;"></div>
+                {% else %}
+                    <div class="hotel-card-media media-lobby" style="height: 300px;"></div>
+                {% endif %}
             {% endif %}
+
             <div class="management-header">
                 <div>
                     <span class="status-pill status-pill--{% if alojamiento.estado == 'A' %}activo{% elif alojamiento.estado == 'P' %}pendiente{% else %}rechazado{% endif %}">{{ alojamiento.get_estado_display }}</span>
@@ -28,7 +35,27 @@
                     <p><strong>Direccion:</strong> {{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
                     <p><strong>Tipo:</strong> {{ alojamiento.get_tipo_display }}</p>
                     <p><strong>Publicado por:</strong> {{ alojamiento.id_usuario.username }}</p>
+                    
+                    {% if servicios %}
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;">
+                            {% for servicio in servicios %}
+                                <span class="servicio-tag">
+                                    {{ servicio.icono_svg|safe }}
+                                    {{ servicio.nombre }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
                     <p class="detalle-descripcion">{{ alojamiento.descripcion }}</p>
+
+                    {% if imgs_galeria %}
+                        <div class="hotel-gallery">
+                            {% for img in imgs_galeria %}
+                                <img src="{{ img.imagen.url }}" alt="Galería">
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </div>
             </div>
 

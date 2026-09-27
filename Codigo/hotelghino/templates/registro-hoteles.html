@@ -46,69 +46,113 @@
             <h2>Registrar hotel</h2>
         </div>
 
-        <form method="post" class="form-stack" id="form-registro-hotel">
+        <form method="post" enctype="multipart/form-data" class="form-stack" id="form-registro-hotel">
             {% csrf_token %}
 
             <label for="id_nombre">
                 Nombre del hotel
-                <input
-                    id="id_nombre"
-                    type="text"
-                    name="nombre"
-                    value="{{ form.nombre.value|default:'' }}"
-                    placeholder="Ej: Hotel Costa Azul"
-                    required
-                >
-                {% if form.nombre.errors %}
-                    <span class="form-error">{{ form.nombre.errors|join:", " }}</span>
-                {% endif %}
+                <input id="id_nombre" type="text" name="nombre" value="{{ form.nombre.value|default:'' }}" placeholder="Ej: Hotel Costa Azul" required>
+                {% if form.nombre.errors %}<span class="form-error">{{ form.nombre.errors|join:", " }}</span>{% endif %}
             </label>
 
             <div class="form-row">
                 <label for="id_calle">
                     Calle
-                    <input
-                        id="id_calle"
-                        type="text"
-                        name="calle"
-                        value="{{ form.calle.value|default:'' }}"
-                        placeholder="Av. Colón"
-                        required
-                    >
-                    {% if form.calle.errors %}
-                        <span class="form-error">{{ form.calle.errors|join:", " }}</span>
-                    {% endif %}
+                    <input id="id_calle" type="text" name="calle" value="{{ form.calle.value|default:'' }}" placeholder="Av. Colón" required>
+                    {% if form.calle.errors %}<span class="form-error">{{ form.calle.errors|join:", " }}</span>{% endif %}
                 </label>
-
                 <label for="id_numero_calle">
                     Número
-                    <input
-                        id="id_numero_calle"
-                        type="text"
-                        name="numero_calle"
-                        value="{{ form.numero_calle.value|default:'' }}"
-                        placeholder="1234"
-                        required
-                    >
-                    {% if form.numero_calle.errors %}
-                        <span class="form-error">{{ form.numero_calle.errors|join:", " }}</span>
-                    {% endif %}
+                    <input id="id_numero_calle" type="text" name="numero_calle" value="{{ form.numero_calle.value|default:'' }}" placeholder="1234" required>
+                    {% if form.numero_calle.errors %}<span class="form-error">{{ form.numero_calle.errors|join:", " }}</span>{% endif %}
                 </label>
             </div>
 
             <label for="id_descripcion">
                 Descripción
-                <textarea
-                    id="id_descripcion"
-                    name="descripcion"
-                    rows="4"
-                    placeholder="Servicios, ubicación, comodidades principales..."
-                    required
-                >{{ form.descripcion.value|default:'' }}</textarea>
-                {% if form.descripcion.errors %}
-                    <span class="form-error">{{ form.descripcion.errors|join:", " }}</span>
-                {% endif %}
+                <textarea id="id_descripcion" name="descripcion" rows="4" placeholder="Servicios, ubicación, comodidades principales..." required>{{ form.descripcion.value|default:'' }}</textarea>
+                {% if form.descripcion.errors %}<span class="form-error">{{ form.descripcion.errors|join:", " }}</span>{% endif %}
             </label>
+
+            <div class="form-section">
+                <h3>Imágenes del hotel</h3>
+                <label for="id_imagen_principal">
+                    Imagen principal (portada)
+                    <input type="file" name="imagen_principal" id="id_imagen_principal" accept="image/*">
+                    <span class="helptext">La foto que verán los huéspedes en las búsquedas.</span>
+                </label>
+                <label for="id_imagenes_extra">
+                    Imágenes adicionales
+                    <input type="file" name="imagenes_extra" id="id_imagenes_extra" accept="image/*" multiple>
+                    <span class="helptext">Podés subir hasta 10 fotos más.</span>
+                </label>
+            </div>
+
+            <div class="form-section">
+                <h3>Servicios del hotel</h3>
+                <p class="helptext">Seleccioná los servicios que ofrece el alojamiento.</p>
+                <div class="servicios-grid">
+                    {% for checkbox in form.servicios %}
+                        <label class="servicio-checkbox">
+                            {{ checkbox.tag }}
+                            <span class="servicio-label">
+                                {% for srv in servicios %}
+                                    {% if srv.pk|stringformat:"s" == checkbox.choice_value|stringformat:"s" %}
+                                        <span class="servicio-icon">{{ srv.icono_svg|safe }}</span>
+                                    {% endif %}
+                                {% endfor %}
+                                {{ checkbox.choice_label }}
+                            </span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Habitaciones (Opcional)</h3>
+                <label class="servicio-checkbox">
+                    <input type="checkbox" name="agregar_habitaciones" value="1" id="id_agregar_habitaciones">
+                    <span class="servicio-label">Crear lote de habitaciones ahora</span>
+                </label>
+                <div id="lote-habitaciones" style="display: none; margin-top: 15px;">
+                    <div class="form-row">
+                        <label for="{{ lote_form.hab_desde.id_for_label }}">
+                            {{ lote_form.hab_desde.label }}
+                            {{ lote_form.hab_desde }}
+                            {% if lote_form.hab_desde.errors %}<span class="form-error">{{ lote_form.hab_desde.errors.0 }}</span>{% endif %}
+                        </label>
+                        <label for="{{ lote_form.hab_hasta.id_for_label }}">
+                            {{ lote_form.hab_hasta.label }}
+                            {{ lote_form.hab_hasta }}
+                            {% if lote_form.hab_hasta.errors %}<span class="form-error">{{ lote_form.hab_hasta.errors.0 }}</span>{% endif %}
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ lote_form.tipo.id_for_label }}">
+                            {{ lote_form.tipo.label }}
+                            {{ lote_form.tipo }}
+                            {% if lote_form.tipo.errors %}<span class="form-error">{{ lote_form.tipo.errors.0 }}</span>{% endif %}
+                        </label>
+                        <label for="{{ lote_form.numero_piso.id_for_label }}">
+                            {{ lote_form.numero_piso.label }}
+                            {{ lote_form.numero_piso }}
+                            {% if lote_form.numero_piso.errors %}<span class="form-error">{{ lote_form.numero_piso.errors.0 }}</span>{% endif %}
+                        </label>
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ lote_form.capacidad_maxima.id_for_label }}">
+                            {{ lote_form.capacidad_maxima.label }}
+                            {{ lote_form.capacidad_maxima }}
+                            {% if lote_form.capacidad_maxima.errors %}<span class="form-error">{{ lote_form.capacidad_maxima.errors.0 }}</span>{% endif %}
+                        </label>
+                        <label for="{{ lote_form.precio_noche.id_for_label }}">
+                            {{ lote_form.precio_noche.label }}
+                            {{ lote_form.precio_noche }}
+                            {% if lote_form.precio_noche.errors %}<span class="form-error">{{ lote_form.precio_noche.errors.0 }}</span>{% endif %}
+                        </label>
+                    </div>
+                </div>
+            </div>
 
             <button class="button button-primary button-full" id="btn-registrar-hotel" type="submit">
                 Registrar hotel
@@ -116,6 +160,20 @@
         </form>
 
         <p class="panel-footer"><a href="{% url 'home' %}">Volver al inicio</a></p>
+        
+        <script>
+            document.getElementById('id_agregar_habitaciones').addEventListener('change', function() {
+                const lote = document.getElementById('lote-habitaciones');
+                const inputs = lote.querySelectorAll('input, select');
+                if (this.checked) {
+                    lote.style.display = 'block';
+                    inputs.forEach(input => input.setAttribute('required', 'required'));
+                } else {
+                    lote.style.display = 'none';
+                    inputs.forEach(input => input.removeAttribute('required'));
+                }
+            });
+        </script>
     </section>
 </main>
 {% endblock %}

@@ -3,7 +3,11 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Usuario, Alojamiento, Habitacion, SolicitudPropietario, Reserva
+from .models import Usuario, Alojamiento, Habitacion, SolicitudPropietario, Reserva, ServicioAlojamiento
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
 
 
 class RegistroUsuario(UserCreationForm):
@@ -85,15 +89,34 @@ class ModificarUsuarioForm(forms.ModelForm):
 class RegistroAlojamiento(forms.ModelForm):
     """
     Formulario para el registro de nuevos alojamientos turísticos.
+    Incluye selección de servicios e imagen de portada.
     """
+    servicios = forms.ModelMultipleChoiceField(
+        queryset=ServicioAlojamiento.objects.all().order_by('orden'),
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label='Servicios del hotel',
+    )
+    imagen_principal = forms.ImageField(
+        required=False,
+        label='Imagen principal (portada)',
+        help_text='Imagen de portada del hotel. Formatos: JPG, PNG, WEBP.',
+    )
+    imagenes_extra = forms.FileField(
+        required=False,
+        label='Imágenes adicionales (hasta 10)',
+        help_text='Podés subir hasta 10 fotos más del hotel.',
+        widget=MultipleFileInput(attrs={'multiple': True}),
+    )
+
     class Meta:
-        # Campos del formulario de alojamiento
         model = Alojamiento
         fields = [
             "nombre",
             "calle",
             "numero_calle",
             "descripcion",
+            "servicios",
         ]
         labels = {
             "nombre": "Nombre del hotel",
@@ -107,6 +130,56 @@ class RegistroAlojamiento(forms.ModelForm):
                 "placeholder": "Servicios, ubicacion, comodidades principales...",
             }),
         }
+
+
+class HabitacionLoteForm(forms.Form):
+    """
+    Formulario para crear múltiples habitaciones de una vez, indicando un rango
+    de números (ej: del 1 al 100). Todas comparten piso, tipo, capacidad y precio.
+    """
+    TIPOS_HABITACION = (
+        ('Simple', 'Simple'),
+        ('Doble', 'Doble'),
+        ('Triple', 'Triple'),
+        ('Suite', 'Suite'),
+        ('Familiar', 'Familiar'),
+    )
+
+    hab_desde = forms.IntegerField(
+        label='Desde la habitación N°',
+        min_value=1,
+        widget=forms.NumberInput(attrs={'placeholder': '1'}),
+    )
+    hab_hasta = forms.IntegerField(
+        label='Hasta la habitación N°',
+        min_value=1,
+        widget=forms.NumberInput(attrs={'placeholder': '10'}),
+    )
+    numero_piso = forms.IntegerField(
+        label='Piso',
+        min_value=0,
+        initial=1,
+    )
+    tipo = forms.ChoiceField(choices=TIPOS_HABITACION, label='Tipo de habitación')
+    capacidad_maxima = forms.IntegerField(
+        label='Capacidad máxima (personas)',
+        min_value=1,
+    )
+    precio_noche = forms.IntegerField(
+        label='Precio por noche ($)',
+        min_value=1,
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        desde = cleaned_data.get('hab_desde')
+        hasta = cleaned_data.get('hab_hasta')
+        if desde and hasta:
+            if hasta < desde:
+                self.add_error('hab_hasta', 'El número final debe ser mayor o igual al inicial.')
+            elif (hasta - desde + 1) > 200:
+                self.add_error('hab_hasta', 'No podés crear más de 200 habitaciones a la vez.')
+        return cleaned_data
 
 
 class HabitacionForm(forms.ModelForm):

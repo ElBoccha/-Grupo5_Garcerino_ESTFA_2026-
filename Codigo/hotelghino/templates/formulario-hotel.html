@@ -46,69 +46,83 @@
             <h2>{{ titulo }}</h2>
         </div>
 
-        <form method="post" class="form-stack" id="form-modificar-hotel">
+        <form method="post" enctype="multipart/form-data" class="form-stack" id="form-modificar-hotel">
             {% csrf_token %}
 
             <label for="id_nombre_mod">
                 Nombre del hotel
-                <input
-                    id="id_nombre_mod"
-                    type="text"
-                    name="nombre"
-                    value="{{ form.nombre.value|default:'' }}"
-                    placeholder="Ej: Hotel Costa Azul"
-                    required
-                >
-                {% if form.nombre.errors %}
-                    <span class="form-error">{{ form.nombre.errors|join:", " }}</span>
-                {% endif %}
+                <input id="id_nombre_mod" type="text" name="nombre" value="{{ form.nombre.value|default:'' }}" placeholder="Ej: Hotel Costa Azul" required>
+                {% if form.nombre.errors %}<span class="form-error">{{ form.nombre.errors|join:", " }}</span>{% endif %}
             </label>
 
             <div class="form-row">
                 <label for="id_calle_mod">
                     Calle
-                    <input
-                        id="id_calle_mod"
-                        type="text"
-                        name="calle"
-                        value="{{ form.calle.value|default:'' }}"
-                        placeholder="Av. Colón"
-                        required
-                    >
-                    {% if form.calle.errors %}
-                        <span class="form-error">{{ form.calle.errors|join:", " }}</span>
-                    {% endif %}
+                    <input id="id_calle_mod" type="text" name="calle" value="{{ form.calle.value|default:'' }}" placeholder="Av. Colón" required>
+                    {% if form.calle.errors %}<span class="form-error">{{ form.calle.errors|join:", " }}</span>{% endif %}
                 </label>
-
                 <label for="id_numero_calle_mod">
                     Número
-                    <input
-                        id="id_numero_calle_mod"
-                        type="text"
-                        name="numero_calle"
-                        value="{{ form.numero_calle.value|default:'' }}"
-                        placeholder="1234"
-                        required
-                    >
-                    {% if form.numero_calle.errors %}
-                        <span class="form-error">{{ form.numero_calle.errors|join:", " }}</span>
-                    {% endif %}
+                    <input id="id_numero_calle_mod" type="text" name="numero_calle" value="{{ form.numero_calle.value|default:'' }}" placeholder="1234" required>
+                    {% if form.numero_calle.errors %}<span class="form-error">{{ form.numero_calle.errors|join:", " }}</span>{% endif %}
                 </label>
             </div>
 
             <label for="id_descripcion_mod">
                 Descripción
-                <textarea
-                    id="id_descripcion_mod"
-                    name="descripcion"
-                    rows="4"
-                    placeholder="Servicios, ubicación, comodidades principales..."
-                    required
-                >{{ form.descripcion.value|default:'' }}</textarea>
-                {% if form.descripcion.errors %}
-                    <span class="form-error">{{ form.descripcion.errors|join:", " }}</span>
-                {% endif %}
+                <textarea id="id_descripcion_mod" name="descripcion" rows="4" placeholder="Servicios, ubicación, comodidades principales..." required>{{ form.descripcion.value|default:'' }}</textarea>
+                {% if form.descripcion.errors %}<span class="form-error">{{ form.descripcion.errors|join:", " }}</span>{% endif %}
             </label>
+
+            <div class="form-section">
+                <h3>Imágenes del hotel</h3>
+                
+                {% if img_principal %}
+                <div style="margin-bottom: 10px;">
+                    <p class="helptext">Imagen actual:</p>
+                    <img src="{{ img_principal.imagen.url }}" alt="Principal" style="max-width: 200px; border-radius: 8px;">
+                </div>
+                {% endif %}
+                <label for="id_imagen_principal">
+                    Cambiar imagen principal (portada)
+                    <input type="file" name="imagen_principal" id="id_imagen_principal" accept="image/*">
+                </label>
+
+                {% if imgs_extra %}
+                <div style="margin-bottom: 10px; margin-top: 20px;">
+                    <p class="helptext">Galería actual ({{ imgs_extra|length }} fotos):</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    {% for img in imgs_extra %}
+                        <img src="{{ img.imagen.url }}" alt="Extra" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px;">
+                    {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <label for="id_imagenes_extra">
+                    Agregar más imágenes
+                    <input type="file" name="imagenes_extra" id="id_imagenes_extra" accept="image/*" multiple>
+                    <span class="helptext">Podés subir hasta llegar al límite de 10 fotos.</span>
+                </label>
+            </div>
+
+            <div class="form-section">
+                <h3>Servicios del hotel</h3>
+                <div class="servicios-grid">
+                    {% for checkbox in form.servicios %}
+                        <label class="servicio-checkbox">
+                            {{ checkbox.tag }}
+                            <span class="servicio-label">
+                                {% for srv in servicios %}
+                                    {% if srv.pk|stringformat:"s" == checkbox.choice_value|stringformat:"s" %}
+                                        <span class="servicio-icon">{{ srv.icono_svg|safe }}</span>
+                                    {% endif %}
+                                {% endfor %}
+                                {{ checkbox.choice_label }}
+                            </span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
 
             <button class="button button-primary button-full" id="btn-guardar-hotel" type="submit">
                 {{ boton }}

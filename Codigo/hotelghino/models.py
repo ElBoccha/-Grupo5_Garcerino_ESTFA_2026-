@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class Usuario(AbstractUser):
@@ -72,6 +73,11 @@ class Alojamiento(models.Model):
     fecha_aprobacion = models.DateTimeField(
         null=True,
         blank=True
+    )
+    servicios = models.ManyToManyField(
+        'ServicioAlojamiento',
+        blank=True,
+        verbose_name='Servicios del alojamiento'
     )
 
     class Meta:
@@ -196,3 +202,76 @@ class SolicitudPropietario(models.Model):
 
     def __str__(self):
         return f"Solicitud de {self.usuario.username} - {self.get_estado_display()}"
+
+
+class ServicioAlojamiento(models.Model):
+    """
+    Catálogo fijo de servicios/amenities disponibles para los alojamientos.
+    Cada entrada representa un servicio con su nombre e icono SVG inline.
+    """
+    SERVICIOS_PREDEFINIDOS = [
+        ('wifi',          'Wi-Fi',                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>'),
+        ('estacionamiento','Estacionamiento',       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/></svg>'),
+        ('piscina',       'Piscina',                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M2 17c1.5 0 2.5-1 4-1s2.5 1 4 1 2.5-1 4-1 2.5 1 4 1"/><path d="M2 22c1.5 0 2.5-1 4-1s2.5 1 4 1 2.5-1 4-1 2.5 1 4 1"/><circle cx="18" cy="5" r="2"/><path d="m14 5 4-2"/></svg>'),
+        ('piscina_clim',  'Piscina climatizada',    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20"/><path d="M2 17c1.5 0 2.5-1 4-1s2.5 1 4 1 2.5-1 4-1 2.5 1 4 1"/><path d="M2 22c1.5 0 2.5-1 4-1s2.5 1 4 1 2.5-1 4-1 2.5 1 4 1"/><path d="M14 8h2a2 2 0 0 0 0-4h-1"/><path d="m10 4 2 8"/></svg>'),
+        ('room_service',  'Servicio de habitación', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>'),
+        ('desayuno',      'Desayuno',               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>'),
+        ('all_inclusive', 'All-inclusive',          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10z"/><path d="m9 12 2 2 4-4"/></svg>'),
+        ('gimnasio',      'Gimnasio',               '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11"/><path d="M6.5 17.5h11"/><path d="M3 9.5v5"/><path d="M21 9.5v5"/><path d="M6.5 6.5v11"/><path d="M17.5 6.5v11"/></svg>'),
+        ('sala_juegos',   'Sala de juegos',         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg>'),
+        ('casino',        'Casino',                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/><rect x="2" y="13" width="9" height="9" rx="1"/><path d="m13 13 9 9"/><path d="m22 13-9 9"/></svg>'),
+        ('futbol',        'Cancha de Fútbol',       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m12 2 2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>'),
+        ('basquet',       'Cancha de Básquet',      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93c4.08 4.08 6.07 8.92 5.07 14.07"/><path d="M19.07 4.93c-4.08 4.08-6.07 8.92-5.07 14.07"/><path d="M2 12h20"/></svg>'),
+        ('spa',           'Spá',                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a9.8 9.8 0 0 1-4.58-1.13A7.75 7.75 0 0 1 2 14c0-3.62 2.57-6.76 6.18-7.67A9 9 0 0 1 12 2a9 9 0 0 1 3.82.33C19.43 7.24 22 10.38 22 14a7.75 7.75 0 0 1-5.42 6.87A9.8 9.8 0 0 1 12 22z"/><path d="M12 22v-4"/><path d="M10 18h4"/></svg>'),
+        ('masajes',       'Masajes',                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16c0 2.2-1.8 4-4 4H8a4 4 0 0 1 0-8h4"/><path d="M8 12c0-2.2 1.8-4 4-4h4a4 4 0 0 1 0 8"/><path d="M12 3v3"/><path d="m9.5 5.5 1 1"/><path d="m14.5 5.5-1 1"/></svg>'),
+        ('jacuzzi',       'Jacuzzi',                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5C3 3 5 2 7 2s3 1.5 3 3-2 3-2 5c0 1.5 1 3 3 3s3-1.5 3-3-2-3.5-2-5c0-1.5 2-3 4-3"/><path d="M3 19h18"/><path d="M5 22h14"/><path d="M5 14h14v2a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4v-2z"/></svg>'),
+        ('bar',           'Bar',                    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 22H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2h-3"/><path d="M11 17v-5l-3-4h8l-3 4v5"/><path d="M9 17h6"/></svg>'),
+        ('cine',          'Sala de cine',           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>'),
+        ('restaurante',   'Restaurante',            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>'),
+    ]
+
+    nombre = models.CharField(max_length=50, unique=True)
+    clave = models.CharField(max_length=30, unique=True, help_text='Identificador interno')
+    icono_svg = models.TextField(help_text='SVG inline del icono')
+    orden = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'Servicio'
+        verbose_name_plural = 'Servicios'
+        ordering = ['orden', 'nombre']
+
+    def __str__(self):
+        return self.nombre
+
+    @classmethod
+    def poblar_servicios(cls):
+        """Crea los servicios predefinidos si no existen."""
+        for i, (clave, nombre, svg) in enumerate(cls.SERVICIOS_PREDEFINIDOS):
+            cls.objects.get_or_create(
+                clave=clave,
+                defaults={'nombre': nombre, 'icono_svg': svg, 'orden': i}
+            )
+
+
+class ImagenAlojamiento(models.Model):
+    """
+    Imagen asociada a un alojamiento. Una puede ser la portada principal
+    y el resto componen la galería (hasta 10 imágenes extra).
+    """
+    alojamiento = models.ForeignKey(
+        Alojamiento,
+        on_delete=models.CASCADE,
+        related_name='imagenes'
+    )
+    imagen = models.ImageField(upload_to='hoteles/', verbose_name='Imagen')
+    es_principal = models.BooleanField(default=False, verbose_name='Imagen principal')
+    orden = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'Imagen de alojamiento'
+        verbose_name_plural = 'Imágenes de alojamiento'
+        ordering = ['-es_principal', 'orden']
+
+    def __str__(self):
+        tipo = 'Principal' if self.es_principal else f'Galería #{self.orden}'
+        return f"{tipo} — {self.alojamiento.nombre}"

@@ -52,19 +52,35 @@
         <section class="hotel-grid">
             {% for alojamiento in alojamientos %}
                 <article class="hotel-card">
-                    {% if 'beto' in alojamiento.nombre|lower or 'tuyu' in alojamiento.nombre|lower or 'andrade' in alojamiento.calle|lower %}
-                        <div class="hotel-card-media media-tuyu">
-                    {% elif 'sorro' in alojamiento.nombre|lower or 'santa clara' in alojamiento.nombre|lower or 'lag tio' in alojamiento.calle|lower %}
-                        <div class="hotel-card-media media-santaclara">
-                    {% else %}
-                        <div class="hotel-card-media media-{% cycle 'coast' 'city' 'lobby' %}">
-                    {% endif %}
+                    {% with img_principal=alojamiento.imagenes.all|first %}
+                        {% if img_principal %}
+                            <div class="hotel-card-media" style="background-image: url('{{ img_principal.imagen.url }}'); background-position: center; background-size: cover;">
+                        {% else %}
+                            {% if 'beto' in alojamiento.nombre|lower or 'tuyu' in alojamiento.nombre|lower or 'andrade' in alojamiento.calle|lower %}
+                                <div class="hotel-card-media media-tuyu">
+                            {% elif 'sorro' in alojamiento.nombre|lower or 'santa clara' in alojamiento.nombre|lower or 'lag tio' in alojamiento.calle|lower %}
+                                <div class="hotel-card-media media-santaclara">
+                            {% else %}
+                                <div class="hotel-card-media media-{% cycle 'coast' 'city' 'lobby' %}">
+                            {% endif %}
+                        {% endif %}
+                    {% endwith %}
                         <span class="status-pill status-pill--{% if alojamiento.estado == 'A' %}activo{% elif alojamiento.estado == 'P' %}pendiente{% else %}rechazado{% endif %}">{{ alojamiento.get_estado_display }}</span>
                     </div>
                     <div class="hotel-card-body">
                         <h3>{{ alojamiento.nombre }}</h3>
                         <p>{{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
                         <p>{{ alojamiento.descripcion|truncatewords:20 }}</p>
+                        
+                        <div style="display: flex; gap: 6px; margin: 8px 0; color: var(--blue-600);">
+                            {% for servicio in alojamiento.servicios.all|slice:":3" %}
+                                <span title="{{ servicio.nombre }}" style="width: 18px; height: 18px;">{{ servicio.icono_svg|safe }}</span>
+                            {% endfor %}
+                            {% if alojamiento.servicios.count > 3 %}
+                                <span style="font-size: 12px; font-weight: 600; color: var(--ink);">+{{ alojamiento.servicios.count|add:"-3" }}</span>
+                            {% endif %}
+                        </div>
+
                         <div class="card-meta">
                             <span>{{ alojamiento.habitacion_set.count }} habitaciones</span>
                             <span>{{ alojamiento.get_tipo_display }}</span>
