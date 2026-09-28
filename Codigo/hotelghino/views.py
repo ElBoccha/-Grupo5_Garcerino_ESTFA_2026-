@@ -830,4 +830,3 @@ def toggleDisponibilidadHabitacion(request, habitacion_id):
         return redirect('mis_hoteles')
 
     return redirect('mis_hoteles')
-
