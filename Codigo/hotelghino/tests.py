@@ -103,7 +103,7 @@ class HotelReservaViewsTest(TestCase):
         home_resp = self.client.get(reverse('home'))
         self.assertNotContains(home_resp, 'Grand Hotel Test')
 
-        # 3. No se pueden añadir habitaciones mientras esté pendiente
+        # 3. Se pueden añadir habitaciones directamente mientras esté pendiente
         self.client.force_login(self.propietario)
         resp_hab = self.client.post(reverse('registrar_habitacion', args=[hotel.id]), {
             'numero_habitacion': 101,
@@ -114,25 +114,48 @@ class HotelReservaViewsTest(TestCase):
             'disponible': True,
         })
         self.assertRedirects(resp_hab, reverse('mis_hoteles'))
-        self.assertEqual(hotel.habitacion_set.count(), 0)
+        self.assertEqual(hotel.habitacion_set.count(), 1)
 
-        # 4. Una vez aprobado por admin, se publica en home y permite añadir habitaciones
+        # 4. Una vez aprobado por admin, se publica en home y mantiene sus habitaciones
         hotel.estado = 'A'
         hotel.save()
 
         home_resp_aprobado = self.client.get(reverse('home'))
         self.assertContains(home_resp_aprobado, 'Grand Hotel Test')
 
-        resp_hab_ok = self.client.post(reverse('registrar_habitacion', args=[hotel.id]), {
-            'numero_habitacion': 101,
+    def test_creacion_hotel_con_habitaciones_en_lote_y_servicios(self):
+        from hotelghino.models import Alojamiento, ServicioAlojamiento, Habitacion
+        ServicioAlojamiento.poblar_servicios()
+        wifi = ServicioAlojamiento.objects.get(nombre='Wi-Fi')
+        piscina = ServicioAlojamiento.objects.get(nombre='Piscina')
+
+        self.client.force_login(self.propietario)
+        resp = self.client.post(reverse('registro_hoteles'), {
+            'nombre': 'Resort Mega Playa',
+            'calle': 'Av. Maritima',
+            'numero_calle': '500',
+            'descripcion': 'Resort con todos los servicios y 50 habitaciones.',
+            'servicios': [wifi.id, piscina.id],
+            'crear_habitaciones_lote': True,
+            'hab_desde': 1,
+            'hab_hasta': 20,
             'numero_piso': 1,
+            'tipo': 'Doble',
             'capacidad_maxima': 2,
-            'tipo': 'Simple',
-            'precio_noche': 3000,
-            'disponible': True,
+            'precio_noche': 8500,
         })
-        self.assertRedirects(resp_hab_ok, reverse('mis_hoteles'))
-        self.assertEqual(hotel.habitacion_set.count(), 1)
+        self.assertRedirects(resp, reverse('mis_hoteles'))
+
+        hotel = Alojamiento.objects.get(nombre='Resort Mega Playa')
+        self.assertEqual(hotel.estado, 'P')
+        # Verifica que se crearon 20 habitaciones en lote
+        self.assertEqual(hotel.habitacion_set.count(), 20)
+        self.assertTrue(Habitacion.objects.filter(id_alohamiento=hotel, numero_habitacion=1).exists())
+        self.assertTrue(Habitacion.objects.filter(id_alohamiento=hotel, numero_habitacion=20).exists())
+        # Verifica que se guardaron los servicios
+        self.assertEqual(hotel.servicios.count(), 2)
+        self.assertTrue(hotel.servicios.filter(nombre='Wi-Fi').exists())
+        self.assertTrue(hotel.servicios.filter(nombre='Piscina').exists())
 
     def test_vista_invitado_home_y_redireccion_login_al_reservar(self):
         from hotelghino.models import Alojamiento

@@ -310,7 +310,7 @@ def registroAlojamiento(request):
     if request.method == 'POST':
         form = RegistroAlojamiento(request.POST, request.FILES)
         lote_form = HabitacionLoteForm(request.POST)
-        agregar_lote = request.POST.get('agregar_habitaciones') == '1'
+        agregar_lote = request.POST.get('agregar_habitaciones') in ['1', 'true', 'on', 'True', True] or request.POST.get('crear_habitaciones_lote') in ['1', 'true', 'on', 'True', True]
 
         form_ok = form.is_valid()
         lote_ok = (not agregar_lote) or lote_form.is_valid()
