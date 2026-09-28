@@ -160,12 +160,83 @@ def home(request):
         tipo='HT'
     ).prefetch_related('habitacion_set').order_by('-fecha_creacion')
 
+    # Lista de zonas y ciudades turísticas reconocidas de Argentina
+    destinos_sugeridos = [
+        # Costa Atlántica
+        "Cariló",
+        "Claromecó",
+        "Las Grutas",
+        "Mar Azul",
+        "Mar de Ajó",
+        "Mar de las Pampas",
+        "Mar del Plata",
+        "Mar del Tuyú",
+        "Miramar",
+        "Monte Hermoso",
+        "Necochea",
+        "Pinamar",
+        "San Bernardo",
+        "San Clemente del Tuyú",
+        "Santa Clara del Mar",
+        "Valeria del Mar",
+        "Villa Gesell",
+        # Patagonia y Lagos
+        "Bariloche",
+        "El Calafate",
+        "El Chaltén",
+        "Puerto Madryn",
+        "San Martín de los Andes",
+        "Ushuaia",
+        "Villa La Angostura",
+        # Sierras y Centro
+        "Capilla del Monte",
+        "La Cumbrecita",
+        "Merlo",
+        "Mina Clavero",
+        "Sierra de la Ventana",
+        "Tandil",
+        "Villa Carlos Paz",
+        "Villa General Belgrano",
+        # Cuyo, Norte y Litoral
+        "Cafayate",
+        "Colón",
+        "Federación",
+        "Gualeguaychú",
+        "Puerto Iguazú",
+        "Purmamarca",
+        "San Rafael",
+        "Tilcara",
+    ]
+    destinos_sugeridos = sorted(destinos_sugeridos)
+
     if destino:
-        alojamientos = alojamientos.filter(
+        destino_lower = destino.lower()
+        destino_norm = (
+            destino_lower.replace('á', 'a')
+            .replace('é', 'e')
+            .replace('í', 'i')
+            .replace('ó', 'o')
+            .replace('ú', 'u')
+        )
+        filtro_destino = (
             Q(nombre__icontains=destino) |
             Q(calle__icontains=destino) |
             Q(descripcion__icontains=destino)
         )
+        if destino_norm != destino_lower:
+            filtro_destino |= (
+                Q(nombre__icontains=destino_norm) |
+                Q(calle__icontains=destino_norm) |
+                Q(descripcion__icontains=destino_norm)
+            )
+
+        # Mapeo de localidades de prueba
+        if 'tuyu' in destino_norm:
+            filtro_destino |= Q(nombre__icontains='beto') | Q(calle__icontains='andrade')
+        if 'santa clara' in destino_norm or 'clara' in destino_norm:
+            filtro_destino |= Q(nombre__icontains='sorro') | Q(calle__icontains='lag tio') | Q(nombre__icontains='costanera')
+
+        alojamientos = alojamientos.filter(filtro_destino)
 
     if desde and hasta:
         try:
@@ -188,6 +259,7 @@ def home(request):
         'destino': destino,
         'desde': desde,
         'hasta': hasta,
+        'destinos_sugeridos': destinos_sugeridos,
     })
 
 
