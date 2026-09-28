@@ -37,11 +37,11 @@
                     <p><strong>Publicado por:</strong> {{ alojamiento.id_usuario.username }}</p>
                     
                     {% if servicios %}
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;">
+                        <div class="hotel-servicios-list" style="display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0;">
                             {% for servicio in servicios %}
-                                <span class="servicio-tag">
-                                    {{ servicio.icono_svg|safe }}
-                                    {{ servicio.nombre }}
+                                <span class="servicio-tag" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 9999px; color: #1d4ed8; font-size: 13px; font-weight: 600; line-height: 1;">
+                                    <span class="servicio-icon" style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; min-width: 18px; min-height: 18px;">{{ servicio.icono_svg|safe }}</span>
+                                    <span>{{ servicio.nombre }}</span>
                                 </span>
                             {% endfor %}
                         </div>

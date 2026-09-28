@@ -1880,68 +1880,141 @@ tbody tr:last-child td {
 .admin-alert-action:hover {
     color: var(--coral-700);
 }
-. f o r m - s e c t i o n   { 
-         p a d d i n g - t o p :   1 6 p x ; 
-         b o r d e r - t o p :   1 p x   s o l i d   v a r ( - - l i n e ) ; 
-         m a r g i n - t o p :   8 p x ; 
- } 
- . f o r m - s e c t i o n   h 3   { 
-         f o n t - s i z e :   1 6 p x ; 
-         m a r g i n - b o t t o m :   1 2 p x ; 
- } 
- . s e r v i c i o s - g r i d   { 
-         d i s p l a y :   g r i d ; 
-         g r i d - t e m p l a t e - c o l u m n s :   r e p e a t ( a u t o - f i l l ,   m i n m a x ( 1 8 0 p x ,   1 f r ) ) ; 
-         g a p :   1 2 p x ; 
-         m a r g i n - t o p :   1 2 p x ; 
- } 
- . s e r v i c i o - c h e c k b o x   { 
-         d i s p l a y :   f l e x ; 
-         a l i g n - i t e m s :   f l e x - s t a r t ; 
-         g a p :   8 p x ; 
-         c u r s o r :   p o i n t e r ; 
-         f o n t - w e i g h t :   5 0 0 ; 
- } 
- . s e r v i c i o - c h e c k b o x   i n p u t   { 
-         w i d t h :   a u t o ; 
-         m i n - h e i g h t :   a u t o ; 
-         m a r g i n - t o p :   3 p x ; 
- } 
- . s e r v i c i o - i c o n   { 
-         d i s p l a y :   i n l i n e - f l e x ; 
-         a l i g n - i t e m s :   c e n t e r ; 
-         c o l o r :   v a r ( - - b l u e - 5 0 0 ) ; 
-         m a r g i n - r i g h t :   6 p x ; 
- } 
- . s e r v i c i o - i c o n   s v g   { 
-         w i d t h :   1 8 p x ; 
-         h e i g h t :   1 8 p x ; 
- } 
- . s e r v i c i o - t a g   { 
-         d i s p l a y :   i n l i n e - f l e x ; 
-         a l i g n - i t e m s :   c e n t e r ; 
-         g a p :   6 p x ; 
-         p a d d i n g :   6 p x   1 2 p x ; 
-         b o r d e r - r a d i u s :   v a r ( - - r a d i u s - f u l l ) ; 
-         b a c k g r o u n d :   v a r ( - - b l u e - 5 0 ) ; 
-         c o l o r :   v a r ( - - b l u e - 7 0 0 ) ; 
-         f o n t - s i z e :   1 3 p x ; 
-         f o n t - w e i g h t :   6 0 0 ; 
- } 
- . s e r v i c i o - t a g   s v g   { 
-         w i d t h :   1 6 p x ; 
-         h e i g h t :   1 6 p x ; 
- } 
- . h o t e l - g a l l e r y   { 
-         d i s p l a y :   g r i d ; 
-         g r i d - t e m p l a t e - c o l u m n s :   r e p e a t ( a u t o - f i l l ,   m i n m a x ( 1 0 0 p x ,   1 f r ) ) ; 
-         g a p :   8 p x ; 
-         m a r g i n - t o p :   1 6 p x ; 
- } 
- . h o t e l - g a l l e r y   i m g   { 
-         w i d t h :   1 0 0 % ; 
-         a s p e c t - r a t i o :   1 ; 
-         o b j e c t - f i t :   c o v e r ; 
-         b o r d e r - r a d i u s :   8 p x ; 
- }  
- 
+
+/* ---------------------------------------------------------------
+   Form Sections & Amenities / Services
+   --------------------------------------------------------------- */
+.form-section {
+    padding-top: 20px;
+    border-top: 1px solid var(--line, #e2e8f0);
+    margin-top: 20px;
+}
+
+.form-section h3 {
+    font-size: 16.5px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--ink, #0f172a);
+}
+
+.servicios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.servicio-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.servicio-checkbox:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.servicio-checkbox input[type="checkbox"] {
+    width: 18px !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    margin: 0 !important;
+    cursor: pointer;
+    accent-color: #2563eb;
+    flex-shrink: 0;
+}
+
+.servicio-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #334155;
+    font-size: 14px;
+}
+
+.servicio-icon,
+.servicio-icon svg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+    flex-shrink: 0;
+    color: var(--blue-600, #2563eb);
+}
+
+/* Hotel Detail Services Badges */
+.hotel-servicios-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 16px 0;
+}
+
+.servicio-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 9999px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-size: 13.5px;
+    font-weight: 600;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.servicio-tag:hover {
+    background: #dbeafe;
+    transform: translateY(-1px);
+}
+
+.servicio-tag svg {
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
+    max-width: 18px !important;
+    max-height: 18px !important;
+    stroke: currentColor;
+    flex-shrink: 0;
+}
+
+/* Hotel Gallery */
+.hotel-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+    margin-bottom: 20px;
+}
+
+.hotel-gallery img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+    transition: transform 0.2s ease;
+}
+
+.hotel-gallery img:hover {
+    transform: scale(1.04);
+}
