@@ -11,9 +11,68 @@
         </div>
 
         <form class="search-panel" method="get">
-            <label>
+            <label class="search-combo-label">
                 Destino
-                <input type="text" name="destino" value="{{ destino }}" placeholder="Mar del Tuyu, Santa Clara, Pinamar...">
+                <input 
+                    type="text" 
+                    name="destino" 
+                    id="buscador-destino" 
+                    value="{{ destino }}" 
+                    placeholder="Mar del Tuyu, Santa Clara, Pinamar..." 
+                    autocomplete="off" 
+                    list="destinos-lista"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-controls="combo-suggestions"
+                >
+                <datalist id="destinos-lista">
+                    {% for d in destinos_sugeridos %}
+                        <option value="{{ d }}"></option>
+                    {% empty %}
+                        <option value="Bariloche"></option>
+                        <option value="Cafayate"></option>
+                        <option value="Capilla del Monte"></option>
+                        <option value="Cariló"></option>
+                        <option value="Claromecó"></option>
+                        <option value="Colón"></option>
+                        <option value="El Calafate"></option>
+                        <option value="El Chaltén"></option>
+                        <option value="Federación"></option>
+                        <option value="Gualeguaychú"></option>
+                        <option value="La Cumbrecita"></option>
+                        <option value="Las Grutas"></option>
+                        <option value="Mar Azul"></option>
+                        <option value="Mar de Ajó"></option>
+                        <option value="Mar de las Pampas"></option>
+                        <option value="Mar del Plata"></option>
+                        <option value="Mar del Tuyú"></option>
+                        <option value="Merlo"></option>
+                        <option value="Mina Clavero"></option>
+                        <option value="Miramar"></option>
+                        <option value="Monte Hermoso"></option>
+                        <option value="Necochea"></option>
+                        <option value="Pinamar"></option>
+                        <option value="Puerto Iguazú"></option>
+                        <option value="Puerto Madryn"></option>
+                        <option value="Purmamarca"></option>
+                        <option value="San Bernardo"></option>
+                        <option value="San Clemente del Tuyú"></option>
+                        <option value="San Martín de los Andes"></option>
+                        <option value="San Rafael"></option>
+                        <option value="Santa Clara del Mar"></option>
+                        <option value="Sierra de la Ventana"></option>
+                        <option value="Tandil"></option>
+                        <option value="Tilcara"></option>
+                        <option value="Ushuaia"></option>
+                        <option value="Valeria del Mar"></option>
+                        <option value="Villa Carlos Paz"></option>
+                        <option value="Villa General Belgrano"></option>
+                        <option value="Villa Gesell"></option>
+                        <option value="Villa La Angostura"></option>
+                    {% endfor %}
+                </datalist>
+                <ul class="combo-suggestions" id="combo-suggestions" role="listbox" aria-label="Destinos sugeridos"></ul>
             </label>
             <label>
                 Desde
@@ -106,4 +165,215 @@
         </section>
     {% endif %}
 </main>
+
+<script>
+(function() {
+    var input = document.getElementById('buscador-destino');
+    var list = document.getElementById('combo-suggestions');
+    var datalist = document.getElementById('destinos-lista');
+    if (!input || !list) return;
+
+    var rawOptions = [];
+    if (datalist) {
+        var optionElements = datalist.querySelectorAll('option');
+        optionElements.forEach(function(opt) {
+            var val = (opt.value || opt.textContent || '').trim();
+            if (val && rawOptions.indexOf(val) === -1) {
+                rawOptions.push(val);
+            }
+        });
+    }
+
+    if (rawOptions.length === 0) {
+        rawOptions = [
+            "Bariloche", "Cafayate", "Capilla del Monte", "Cariló", "Claromecó",
+            "Colón", "El Calafate", "El Chaltén", "Federación", "Gualeguaychú",
+            "La Cumbrecita", "Las Grutas", "Mar Azul", "Mar de Ajó", "Mar de las Pampas",
+            "Mar del Plata", "Mar del Tuyú", "Merlo", "Mina Clavero", "Miramar",
+            "Monte Hermoso", "Necochea", "Pinamar", "Puerto Iguazú", "Puerto Madryn",
+            "Purmamarca", "San Bernardo", "San Clemente del Tuyú", "San Martín de los Andes",
+            "San Rafael", "Santa Clara del Mar", "Sierra de la Ventana", "Tandil",
+            "Tilcara", "Ushuaia", "Valeria del Mar", "Villa Carlos Paz",
+            "Villa General Belgrano", "Villa Gesell", "Villa La Angostura"
+        ];
+    }
+
+    // Suprimir el popup nativo del navegador para usar el combobox con diseño propio
+    input.removeAttribute('list');
+
+    var selectedIndex = -1;
+    var currentFiltered = [];
+
+    function normalize(str) {
+        return (str || '')
+            .toLowerCase()
+            .replace(/[áàäâ]/g, 'a')
+            .replace(/[éèëê]/g, 'e')
+            .replace(/[íìïî]/g, 'i')
+            .replace(/[óòöô]/g, 'o')
+            .replace(/[úùüû]/g, 'u');
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function renderSuggestions(query) {
+        list.innerHTML = '';
+        selectedIndex = -1;
+        var qNorm = normalize(query.trim());
+
+        if (!qNorm) {
+            // Sugerencias populares cuando el campo está vacío al hacer foco
+            currentFiltered = [
+                "Mar del Plata", "Mar del Tuyú", "Pinamar", "Villa Gesell",
+                "Santa Clara del Mar", "Bariloche", "Villa Carlos Paz", "San Bernardo"
+            ].filter(function(d) { return rawOptions.indexOf(d) !== -1; });
+        } else {
+            // Priorizar las que empiezan con la consulta y luego las que la contienen
+            var starts = [];
+            var contains = [];
+            rawOptions.forEach(function(item) {
+                var itemNorm = normalize(item);
+                var idx = itemNorm.indexOf(qNorm);
+                if (idx === 0) {
+                    starts.push(item);
+                } else if (idx > 0) {
+                    contains.push(item);
+                }
+            });
+            currentFiltered = starts.concat(contains);
+        }
+
+        if (currentFiltered.length === 0) {
+            closeSuggestions();
+            return;
+        }
+
+        currentFiltered.forEach(function(item, idx) {
+            var li = document.createElement('li');
+            li.className = 'combo-suggestion-item';
+            li.setAttribute('role', 'option');
+            li.setAttribute('id', 'combo-opt-' + idx);
+
+            var icon = document.createElement('span');
+            icon.className = 'combo-icon';
+            icon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+
+            var textSpan = document.createElement('span');
+            if (qNorm) {
+                var itemNorm = normalize(item);
+                var matchIdx = itemNorm.indexOf(qNorm);
+                if (matchIdx !== -1) {
+                    var before = item.slice(0, matchIdx);
+                    var match = item.slice(matchIdx, matchIdx + query.trim().length);
+                    var after = item.slice(matchIdx + query.trim().length);
+                    textSpan.innerHTML = escapeHtml(before) + '<span class="combo-match">' + escapeHtml(match) + '</span>' + escapeHtml(after);
+                } else {
+                    textSpan.textContent = item;
+                }
+            } else {
+                textSpan.textContent = item;
+            }
+
+            var tag = document.createElement('span');
+            tag.className = 'combo-tag';
+            var lower = item.toLowerCase();
+            if (lower.indexOf('mar') !== -1 || lower.indexOf('pinamar') !== -1 || lower.indexOf('gesell') !== -1 || lower.indexOf('bernardo') !== -1 || lower.indexOf('clemente') !== -1 || lower.indexOf('cariló') !== -1 || lower.indexOf('valeria') !== -1 || lower.indexOf('necochea') !== -1 || lower.indexOf('claromecó') !== -1 || lower.indexOf('monte hermoso') !== -1 || lower.indexOf('grutas') !== -1) {
+                tag.textContent = 'Costa';
+            } else if (lower.indexOf('bariloche') !== -1 || lower.indexOf('angostura') !== -1 || lower.indexOf('calafate') !== -1 || lower.indexOf('chaltén') !== -1 || lower.indexOf('ushuaia') !== -1 || lower.indexOf('san martín') !== -1 || lower.indexOf('madryn') !== -1) {
+                tag.textContent = 'Patagonia';
+            } else if (lower.indexOf('carlos paz') !== -1 || lower.indexOf('belgrano') !== -1 || lower.indexOf('cumbrecita') !== -1 || lower.indexOf('merlo') !== -1 || lower.indexOf('tandil') !== -1 || lower.indexOf('ventana') !== -1 || lower.indexOf('clavero') !== -1 || lower.indexOf('capilla') !== -1) {
+                tag.textContent = 'Sierras';
+            } else {
+                tag.textContent = 'Turismo';
+            }
+
+            li.appendChild(icon);
+            li.appendChild(textSpan);
+            li.appendChild(tag);
+
+            li.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                selectDestination(item);
+            });
+
+            list.appendChild(li);
+        });
+
+        list.classList.add('is-open');
+        input.setAttribute('aria-expanded', 'true');
+    }
+
+    function selectDestination(name) {
+        input.value = name;
+        closeSuggestions();
+        input.focus();
+    }
+
+    function closeSuggestions() {
+        list.classList.remove('is-open');
+        input.setAttribute('aria-expanded', 'false');
+        selectedIndex = -1;
+    }
+
+    function updateActiveItem() {
+        var items = list.querySelectorAll('.combo-suggestion-item');
+        items.forEach(function(item, idx) {
+            if (idx === selectedIndex) {
+                item.classList.add('is-selected');
+                item.scrollIntoView({ block: 'nearest' });
+                input.setAttribute('aria-activedescendant', item.id);
+            } else {
+                item.classList.remove('is-selected');
+            }
+        });
+    }
+
+    input.addEventListener('input', function() {
+        renderSuggestions(input.value);
+    });
+
+    input.addEventListener('focus', function() {
+        renderSuggestions(input.value);
+    });
+
+    input.addEventListener('keydown', function(e) {
+        if (!list.classList.contains('is-open')) {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                renderSuggestions(input.value);
+                e.preventDefault();
+            }
+            return;
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (selectedIndex < currentFiltered.length - 1) {
+                selectedIndex++;
+                updateActiveItem();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (selectedIndex > 0) {
+                selectedIndex--;
+                updateActiveItem();
+            }
+        } else if (e.key === 'Enter') {
+            if (selectedIndex >= 0 && selectedIndex < currentFiltered.length) {
+                e.preventDefault();
+                selectDestination(currentFiltered[selectedIndex]);
+            }
+        } else if (e.key === 'Escape') {
+            closeSuggestions();
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !list.contains(e.target)) {
+            closeSuggestions();
+        }
+    });
+})();
+</script>
 {% endblock %}
