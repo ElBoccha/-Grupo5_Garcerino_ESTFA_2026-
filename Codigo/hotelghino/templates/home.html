@@ -224,25 +224,37 @@
         var qNorm = normalize(query.trim());
 
         if (!qNorm) {
-            // Sugerencias populares cuando el campo está vacío al hacer foco
-            currentFiltered = [
-                "Mar del Plata", "Mar del Tuyú", "Pinamar", "Villa Gesell",
-                "Santa Clara del Mar", "Bariloche", "Villa Carlos Paz", "San Bernardo"
-            ].filter(function(d) { return rawOptions.indexOf(d) !== -1; });
+            // Mostrar los primeros hoteles y destinos populares cuando está vacío
+            currentFiltered = rawOptions.slice(0, 10);
         } else {
-            // Priorizar las que empiezan con la consulta y luego las que la contienen
-            var starts = [];
-            var contains = [];
+            // Clasificar por coincidencia de inicio de frase, inicio de palabra o contenido
+            var startsWithFull = [];
+            var startsWithWord = [];
+            var containsSub = [];
+
             rawOptions.forEach(function(item) {
                 var itemNorm = normalize(item);
-                var idx = itemNorm.indexOf(qNorm);
-                if (idx === 0) {
-                    starts.push(item);
-                } else if (idx > 0) {
-                    contains.push(item);
+                var words = itemNorm.split(/\s+/);
+
+                if (itemNorm.indexOf(qNorm) === 0) {
+                    startsWithFull.push(item);
+                } else if (words.some(function(w) { return w.indexOf(qNorm) === 0; })) {
+                    startsWithWord.push(item);
+                } else if (itemNorm.indexOf(qNorm) !== -1) {
+                    containsSub.push(item);
                 }
             });
-            currentFiltered = starts.concat(contains);
+
+            // Combinar sin duplicados manteniendo la prioridad
+            var combined = [];
+            [startsWithFull, startsWithWord, containsSub].forEach(function(group) {
+                group.forEach(function(it) {
+                    if (combined.indexOf(it) === -1) {
+                        combined.push(it);
+                    }
+                });
+            });
+            currentFiltered = combined.slice(0, 15);
         }
 
         if (currentFiltered.length === 0) {
@@ -256,9 +268,28 @@
             li.setAttribute('role', 'option');
             li.setAttribute('id', 'combo-opt-' + idx);
 
+            var lower = item.toLowerCase();
+            var isHotel = false;
+
+            // Detectar si es un hotel registrado o destino turístico
+            var tagText = 'Destino';
+            var iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+
+            if (lower.indexOf('beto') !== -1 || lower.indexOf('cincelado') !== -1 || lower.indexOf('macri') !== -1 || lower.indexOf('sorro') !== -1 || lower.indexOf('cristina') !== -1 || lower.indexOf('obrera') !== -1 || lower.indexOf('hotel') !== -1 || lower.indexOf('resort') !== -1 || lower.indexOf('plaza') !== -1) {
+                isHotel = true;
+                tagText = 'Hotel';
+                iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M14 17h1"/></svg>';
+            } else if (lower.indexOf('mar') !== -1 || lower.indexOf('pinamar') !== -1 || lower.indexOf('gesell') !== -1 || lower.indexOf('bernardo') !== -1 || lower.indexOf('clemente') !== -1 || lower.indexOf('cariló') !== -1 || lower.indexOf('valeria') !== -1 || lower.indexOf('necochea') !== -1 || lower.indexOf('claromecó') !== -1 || lower.indexOf('monte hermoso') !== -1 || lower.indexOf('grutas') !== -1) {
+                tagText = 'Costa';
+            } else if (lower.indexOf('bariloche') !== -1 || lower.indexOf('angostura') !== -1 || lower.indexOf('calafate') !== -1 || lower.indexOf('chaltén') !== -1 || lower.indexOf('ushuaia') !== -1 || lower.indexOf('san martín') !== -1 || lower.indexOf('madryn') !== -1) {
+                tagText = 'Patagonia';
+            } else if (lower.indexOf('carlos paz') !== -1 || lower.indexOf('belgrano') !== -1 || lower.indexOf('cumbrecita') !== -1 || lower.indexOf('merlo') !== -1 || lower.indexOf('tandil') !== -1 || lower.indexOf('ventana') !== -1 || lower.indexOf('clavero') !== -1 || lower.indexOf('capilla') !== -1) {
+                tagText = 'Sierras';
+            }
+
             var icon = document.createElement('span');
             icon.className = 'combo-icon';
-            icon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+            icon.innerHTML = iconSvg;
 
             var textSpan = document.createElement('span');
             if (qNorm) {
@@ -278,16 +309,11 @@
 
             var tag = document.createElement('span');
             tag.className = 'combo-tag';
-            var lower = item.toLowerCase();
-            if (lower.indexOf('mar') !== -1 || lower.indexOf('pinamar') !== -1 || lower.indexOf('gesell') !== -1 || lower.indexOf('bernardo') !== -1 || lower.indexOf('clemente') !== -1 || lower.indexOf('cariló') !== -1 || lower.indexOf('valeria') !== -1 || lower.indexOf('necochea') !== -1 || lower.indexOf('claromecó') !== -1 || lower.indexOf('monte hermoso') !== -1 || lower.indexOf('grutas') !== -1) {
-                tag.textContent = 'Costa';
-            } else if (lower.indexOf('bariloche') !== -1 || lower.indexOf('angostura') !== -1 || lower.indexOf('calafate') !== -1 || lower.indexOf('chaltén') !== -1 || lower.indexOf('ushuaia') !== -1 || lower.indexOf('san martín') !== -1 || lower.indexOf('madryn') !== -1) {
-                tag.textContent = 'Patagonia';
-            } else if (lower.indexOf('carlos paz') !== -1 || lower.indexOf('belgrano') !== -1 || lower.indexOf('cumbrecita') !== -1 || lower.indexOf('merlo') !== -1 || lower.indexOf('tandil') !== -1 || lower.indexOf('ventana') !== -1 || lower.indexOf('clavero') !== -1 || lower.indexOf('capilla') !== -1) {
-                tag.textContent = 'Sierras';
-            } else {
-                tag.textContent = 'Turismo';
+            if (isHotel) {
+                tag.style.background = '#eff6ff';
+                tag.style.color = '#1d4ed8';
             }
+            tag.textContent = tagText;
 
             li.appendChild(icon);
             li.appendChild(textSpan);

@@ -160,8 +160,20 @@ def home(request):
         tipo='HT'
     ).prefetch_related('habitacion_set').order_by('-fecha_creacion')
 
+    # Obtener nombres y calles de hoteles reales en la base de datos
+    hoteles_bd = list(
+        Alojamiento.objects.filter(estado='A', tipo='HT')
+        .values_list('nombre', flat=True)
+        .distinct()
+    )
+    calles_bd = [
+        c.strip() for c in Alojamiento.objects.filter(estado='A', tipo='HT')
+        .values_list('calle', flat=True)
+        .distinct() if c and len(c.strip()) > 1
+    ]
+
     # Lista de zonas y ciudades turísticas reconocidas de Argentina
-    destinos_sugeridos = [
+    ciudades_turisticas = [
         # Costa Atlántica
         "Cariló",
         "Claromecó",
@@ -207,7 +219,12 @@ def home(request):
         "San Rafael",
         "Tilcara",
     ]
-    destinos_sugeridos = sorted(destinos_sugeridos)
+    
+    # Combinar hoteles primero, luego calles y destinos turísticos
+    destinos_sugeridos = []
+    for item in hoteles_bd + calles_bd + sorted(ciudades_turisticas):
+        if item and item not in destinos_sugeridos:
+            destinos_sugeridos.append(item)
 
     if destino:
         destino_lower = destino.lower()
