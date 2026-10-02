@@ -9,6 +9,25 @@ from .models import Usuario, Alojamiento, Habitacion, SolicitudPropietario, Rese
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
 
+    def __init__(self, attrs=None):
+        super().__init__(attrs)
+        # Forzar el atributo en el widget por si Django no lo propaga
+        self.attrs.setdefault('multiple', True)
+
+
+class MultipleFileField(forms.FileField):
+    """Campo que acepta múltiples archivos y valida cada uno individualmente."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('widget', MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            return [single_clean(f, initial) for f in data]
+        return [single_clean(data, initial)] if data else []
+
 
 class RegistroUsuario(UserCreationForm):
     """
@@ -97,22 +116,28 @@ class RegistroAlojamiento(forms.ModelForm):
         widget=forms.CheckboxSelectMultiple,
         label='Servicios del hotel',
     )
+    ubicacion = forms.ChoiceField(
+        choices=[('', '-- Seleccioná la ubicación del hotel --')] + list(Alojamiento.UBICACIONES_REALES),
+        label='Ubicación (Ciudad / Destino)',
+        required=True,
+        help_text='Seleccioná la ciudad turística real de tu alojamiento.',
+    )
     imagen_principal = forms.ImageField(
         required=False,
         label='Imagen principal (portada)',
         help_text='Imagen de portada del hotel. Formatos: JPG, PNG, WEBP.',
     )
-    imagenes_extra = forms.FileField(
+    imagenes_extra = MultipleFileField(
         required=False,
         label='Imágenes adicionales (hasta 10)',
         help_text='Podés subir hasta 10 fotos más del hotel.',
-        widget=MultipleFileInput(attrs={'multiple': True}),
     )
 
     class Meta:
         model = Alojamiento
         fields = [
             "nombre",
+            "ubicacion",
             "calle",
             "numero_calle",
             "descripcion",
@@ -120,14 +145,15 @@ class RegistroAlojamiento(forms.ModelForm):
         ]
         labels = {
             "nombre": "Nombre del hotel",
+            "ubicacion": "Ubicación / Ciudad",
             "calle": "Calle",
-            "numero_calle": "Numero",
-            "descripcion": "Descripcion",
+            "numero_calle": "Número",
+            "descripcion": "Descripción",
         }
         widgets = {
             "descripcion": forms.Textarea(attrs={
                 "rows": 4,
-                "placeholder": "Servicios, ubicacion, comodidades principales...",
+                "placeholder": "Servicios, ubicación, comodidades principales...",
             }),
         }
 

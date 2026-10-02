@@ -3,8 +3,8 @@
 {% block title %}{{ titulo }} - Hotelghino{% endblock %}
 
 {% block content %}
-<main class="auth-layout auth-layout-form">
-    <section class="auth-copy">
+<main class="auth-layout auth-layout-form" style="align-items: start;">
+    <section class="auth-copy" style="align-self: start; position: sticky; top: 96px;">
         <div class="auth-copy-header">
             <h1>{{ titulo }}</h1>
             <p>Modificá los datos de tu hotel. Los cambios quedan guardados de inmediato.</p>
@@ -41,7 +41,7 @@
         </div>
     </section>
 
-    <section class="panel panel-auth">
+    <section class="panel panel-auth" style="align-self: start;">
         <div class="panel-header">
             <h2>{{ titulo }}</h2>
         </div>
@@ -53,6 +53,17 @@
                 Nombre del hotel
                 <input id="id_nombre_mod" type="text" name="nombre" value="{{ form.nombre.value|default:'' }}" placeholder="Ej: Hotel Costa Azul" required>
                 {% if form.nombre.errors %}<span class="form-error">{{ form.nombre.errors|join:", " }}</span>{% endif %}
+            </label>
+
+            <label for="id_ubicacion_mod">
+                Ubicación (Destino turístico real)
+                <select name="ubicacion" id="id_ubicacion_mod" required>
+                    {% for val, label in form.fields.ubicacion.choices %}
+                        <option value="{{ val }}" {% if form.ubicacion.value == val or alojamiento.ubicacion == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                {% if form.ubicacion.errors %}<span class="form-error">{{ form.ubicacion.errors|join:", " }}</span>{% endif %}
+                <span class="helptext">Seleccioná la ciudad turística donde está ubicado el hotel.</span>
             </label>
 
             <div class="form-row">

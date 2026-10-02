@@ -7,7 +7,7 @@
     <section class="section-heading">
         <div>
             <h1>{{ alojamiento.nombre }}</h1>
-            <p>{{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
+            <p>{{ alojamiento.ubicacion }} &bull; {{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
         </div>
         <div class="actions">
             <a class="button button-secondary" href="{% url 'home' %}">Volver al inicio</a>
@@ -17,7 +17,7 @@
     <div class="management-list">
         <article class="management-card">
             {% if img_principal %}
-                <div class="hotel-card-media" style="background-image: url('{{ img_principal.imagen.url }}'); background-position: center; background-size: cover; height: 300px;"></div>
+                <div class="hotel-card-media clickable-media" id="media-principal" data-url="{{ img_principal.imagen.url }}" title="Click para ver en pantalla completa" style="background-image: url('{{ img_principal.imagen.url }}'); background-position: center; background-size: cover; height: 300px;"></div>
             {% else %}
                 {% if 'beto' in alojamiento.nombre|lower or 'tuyu' in alojamiento.nombre|lower or 'andrade' in alojamiento.calle|lower %}
                     <div class="hotel-card-media media-tuyu" style="height: 300px;"></div>
@@ -32,6 +32,7 @@
                 <div>
                     <span class="status-pill status-pill--{% if alojamiento.estado == 'A' %}activo{% elif alojamiento.estado == 'P' %}pendiente{% else %}rechazado{% endif %}">{{ alojamiento.get_estado_display }}</span>
                     <h2>Informacion del Hotel</h2>
+                    <p><strong>Ubicación:</strong> {{ alojamiento.get_ubicacion_display|default:alojamiento.ubicacion }}</p>
                     <p><strong>Direccion:</strong> {{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
                     <p><strong>Tipo:</strong> {{ alojamiento.get_tipo_display }}</p>
                     <p><strong>Publicado por:</strong> {{ alojamiento.id_usuario.username }}</p>
@@ -50,9 +51,9 @@
                     <p class="detalle-descripcion">{{ alojamiento.descripcion }}</p>
 
                     {% if imgs_galeria %}
-                        <div class="hotel-gallery">
+                        <div class="hotel-gallery" id="hotel-gallery">
                             {% for img in imgs_galeria %}
-                                <img src="{{ img.imagen.url }}" alt="Galería">
+                                <img src="{{ img.imagen.url }}" alt="Galería de {{ alojamiento.nombre }}" class="gallery-img" data-url="{{ img.imagen.url }}" title="Click para ver en pantalla completa">
                             {% endfor %}
                         </div>
                     {% endif %}
@@ -88,7 +89,7 @@
                         {% if fechas_validas %}
                             <p>{{ habitaciones|length }} habitaciones — disponibilidad para {{ d_inicio }} al {{ d_fin }}</p>
                         {% else %}
-                            <p>{{ habitaciones|length }} habitaciones registradas</p>
+                            <p>{{ habitaciones|length }} habitaciones registradas. Ingresá fechas arriba para consultar disponibilidad.</p>
                         {% endif %}
                     </div>
                 </div>
@@ -115,10 +116,14 @@
                                         <td>{{ hab.tipo }}</td>
                                         <td><strong>${{ hab.precio_noche }}</strong></td>
                                         <td>
-                                            {% if hab.esta_disponible %}
-                                                <span class="status-pill status-pill--activo">Disponible</span>
+                                            {% if fechas_validas %}
+                                                {% if hab.esta_disponible %}
+                                                    <span class="status-pill status-pill--activo">Disponible</span>
+                                                {% else %}
+                                                    <span class="status-pill status-pill--rechazado">Ocupada</span>
+                                                {% endif %}
                                             {% else %}
-                                                <span class="status-pill status-pill--rechazado">Ocupada</span>
+                                                <span style="color: var(--muted); font-size: 13px;">—</span>
                                             {% endif %}
                                         </td>
                                     </tr>
@@ -216,4 +221,146 @@
         {% endif %}
     </div>
 </main>
+
+<!-- Lightbox para ver imágenes agrandadas a pantalla completa -->
+<div id="image-lightbox" class="lightbox-modal" role="dialog" aria-modal="true" aria-label="Visor de imagen a pantalla completa">
+    <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Cerrar visor">&times;</button>
+    <button type="button" class="lightbox-nav-btn lightbox-prev" id="lightbox-prev" aria-label="Imagen anterior">&#8249;</button>
+    <button type="button" class="lightbox-nav-btn lightbox-next" id="lightbox-next" aria-label="Imagen siguiente">&#8250;</button>
+    
+    <div class="lightbox-content-wrapper">
+        <img id="lightbox-img" class="lightbox-image" src="" alt="Imagen ampliada">
+        <div class="lightbox-footer">
+            <span id="lightbox-counter" class="lightbox-counter">1 / 1</span>
+            <button type="button" id="lightbox-fs-toggle" class="lightbox-fullscreen-btn" title="Alternar pantalla completa">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                Pantalla completa
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const lightbox = document.getElementById('image-lightbox');
+    if (!lightbox) return;
+
+    const lightboxImg = document.getElementById('lightbox-img');
+    const counter = document.getElementById('lightbox-counter');
+    const btnClose = document.getElementById('lightbox-close');
+    const btnPrev = document.getElementById('lightbox-prev');
+    const btnNext = document.getElementById('lightbox-next');
+    const btnFs = document.getElementById('lightbox-fs-toggle');
+
+    // Recopilar todas las imágenes del hotel (portada y galería)
+    const images = [];
+    const mediaPrincipal = document.getElementById('media-principal');
+    if (mediaPrincipal && mediaPrincipal.dataset.url) {
+        images.push(mediaPrincipal.dataset.url);
+    }
+    const galleryImgs = document.querySelectorAll('.gallery-img');
+    galleryImgs.forEach(img => {
+        if (img.dataset.url && !images.includes(img.dataset.url)) {
+            images.push(img.dataset.url);
+        }
+    });
+
+    if (images.length === 0) return;
+
+    let currentIndex = 0;
+
+    function showImage(index) {
+        if (index < 0) index = images.length - 1;
+        if (index >= images.length) index = 0;
+        currentIndex = index;
+
+        lightboxImg.src = images[currentIndex];
+        counter.textContent = `${currentIndex + 1} / ${images.length}`;
+
+        if (images.length <= 1) {
+            btnPrev.style.display = 'none';
+            btnNext.style.display = 'none';
+        } else {
+            btnPrev.style.display = 'flex';
+            btnNext.style.display = 'flex';
+        }
+    }
+
+    function openLightbox(url) {
+        const found = images.indexOf(url);
+        currentIndex = found !== -1 ? found : 0;
+        showImage(currentIndex);
+        lightbox.classList.add('is-active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+        lightbox.classList.remove('is-active');
+        document.body.style.overflow = '';
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        }
+    }
+
+    // Eventos de click en las imágenes
+    if (mediaPrincipal) {
+        mediaPrincipal.addEventListener('click', function() {
+            openLightbox(this.dataset.url);
+        });
+    }
+
+    galleryImgs.forEach(img => {
+        img.addEventListener('click', function() {
+            openLightbox(this.dataset.url);
+        });
+    });
+
+    btnClose.addEventListener('click', closeLightbox);
+
+    btnPrev.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showImage(currentIndex - 1);
+    });
+
+    btnNext.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showImage(currentIndex + 1);
+    });
+
+    // Cerrar al clickear fuera de la imagen
+    lightbox.addEventListener('click', function(e) {
+        if (e.target === lightbox || e.target.classList.contains('lightbox-content-wrapper')) {
+            closeLightbox();
+        }
+    });
+
+    // Navegación con teclado: Escape para salir, flechas para navegar
+    document.addEventListener('keydown', function(e) {
+        if (!lightbox.classList.contains('is-active')) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') showImage(currentIndex - 1);
+        if (e.key === 'ArrowRight') showImage(currentIndex + 1);
+    });
+
+    // Alternar pantalla completa nativa del navegador
+    if (btnFs) {
+        btnFs.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (!document.fullscreenElement) {
+                if (lightbox.requestFullscreen) {
+                    lightbox.requestFullscreen();
+                } else if (lightbox.webkitRequestFullscreen) {
+                    lightbox.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

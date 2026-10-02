@@ -50,12 +50,66 @@ class Alojamiento(models.Model):
         ('CA', 'Casa'),
         ('DP', 'Departamento'),
         ('CB', 'Cabana')
-    )   
+    )
+    UBICACIONES_REALES = (
+        # Costa Atlántica
+        ('Mar del Plata', 'Mar del Plata (Buenos Aires)'),
+        ('Mar del Tuyú', 'Mar del Tuyú (Buenos Aires)'),
+        ('Pinamar', 'Pinamar (Buenos Aires)'),
+        ('Villa Gesell', 'Villa Gesell (Buenos Aires)'),
+        ('San Bernardo', 'San Bernardo (Buenos Aires)'),
+        ('Santa Clara del Mar', 'Santa Clara del Mar (Buenos Aires)'),
+        ('Cariló', 'Cariló (Buenos Aires)'),
+        ('San Clemente del Tuyú', 'San Clemente del Tuyú (Buenos Aires)'),
+        ('Mar de las Pampas', 'Mar de las Pampas (Buenos Aires)'),
+        ('Miramar', 'Miramar (Buenos Aires)'),
+        ('Necochea', 'Necochea (Buenos Aires)'),
+        ('Monte Hermoso', 'Monte Hermoso (Buenos Aires)'),
+        ('Las Grutas', 'Las Grutas (Río Negro)'),
+        # Patagonia y Lagos
+        ('Bariloche', 'Bariloche (Río Negro)'),
+        ('San Martín de los Andes', 'San Martín de los Andes (Neuquén)'),
+        ('Villa La Angostura', 'Villa La Angostura (Neuquén)'),
+        ('El Calafate', 'El Calafate (Santa Cruz)'),
+        ('El Chaltén', 'El Chaltén (Santa Cruz)'),
+        ('Ushuaia', 'Ushuaia (Tierra del Fuego)'),
+        ('Puerto Madryn', 'Puerto Madryn (Chubut)'),
+        # Sierras y Centro
+        ('Villa Carlos Paz', 'Villa Carlos Paz (Córdoba)'),
+        ('Villa General Belgrano', 'Villa General Belgrano (Córdoba)'),
+        ('Merlo', 'Merlo (San Luis)'),
+        ('Mina Clavero', 'Mina Clavero (Córdoba)'),
+        ('La Cumbrecita', 'La Cumbrecita (Córdoba)'),
+        ('Tandil', 'Tandil (Buenos Aires)'),
+        ('Sierra de la Ventana', 'Sierra de la Ventana (Buenos Aires)'),
+        ('Capilla del Monte', 'Capilla del Monte (Córdoba)'),
+        # Cuyo, Norte y Litoral
+        ('Mendoza', 'Mendoza (Mendoza)'),
+        ('San Rafael', 'San Rafael (Mendoza)'),
+        ('Salta', 'Salta (Salta)'),
+        ('Cafayate', 'Cafayate (Salta)'),
+        ('Purmamarca', 'Purmamarca (Jujuy)'),
+        ('Tilcara', 'Tilcara (Jujuy)'),
+        ('Puerto Iguazú', 'Puerto Iguazú (Misiones)'),
+        ('Colón', 'Colón (Entre Ríos)'),
+        ('Federación', 'Federación (Entre Ríos)'),
+        ('Gualeguaychú', 'Gualeguaychú (Entre Ríos)'),
+        # Capitales y grandes centros
+        ('Buenos Aires', 'Buenos Aires (CABA)'),
+        ('Córdoba', 'Córdoba (Córdoba)'),
+        ('Rosario', 'Rosario (Santa Fe)'),
+    )
     nombre = models.CharField(max_length=50)
     tipo = models.CharField(
         max_length=20,
         choices=TIPOS,
         default='HT'
+    )
+    ubicacion = models.CharField(
+        max_length=100,
+        choices=UBICACIONES_REALES,
+        default='Mar del Plata',
+        verbose_name='Ubicación / Ciudad'
     )
     calle = models.CharField(max_length=50)
     numero_calle = models.CharField(max_length=10)

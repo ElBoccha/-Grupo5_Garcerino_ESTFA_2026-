@@ -206,16 +206,16 @@ def home(request):
         {"nombre": "Gualeguaychú", "region": "Litoral", "provincia": "Entre Ríos"},
     ]
 
-    # Obtener hoteles activos registrados para sugerir también por nombre de hotel
+    # Obtener hoteles activos registrados para sugerir también por nombre de hotel y ubicación
     hoteles_sugeridos = []
-    for h in Alojamiento.objects.filter(estado='A', tipo='HT').values('id', 'nombre', 'calle', 'numero_calle'):
+    for h in Alojamiento.objects.filter(estado='A', tipo='HT').values('id', 'nombre', 'ubicacion', 'calle', 'numero_calle'):
         nombre_clean = h['nombre'].strip()
         if len(nombre_clean) >= 3:
-            ubicacion = f"{h['calle']} {h['numero_calle']}".strip()
+            ubicacion_info = f"{h['ubicacion']} &bull; {h['calle']} {h['numero_calle']}".strip(' &bull;')
             hoteles_sugeridos.append({
                 'nombre': nombre_clean,
                 'region': 'Hotel',
-                'provincia': ubicacion or 'Hotel registrado',
+                'provincia': h['ubicacion'] or ubicacion_info or 'Hotel registrado',
                 'es_hotel': True,
             })
 
@@ -233,12 +233,14 @@ def home(request):
         )
         filtro_destino = (
             Q(nombre__icontains=destino) |
+            Q(ubicacion__icontains=destino) |
             Q(calle__icontains=destino) |
             Q(descripcion__icontains=destino)
         )
         if destino_norm != destino_lower:
             filtro_destino |= (
                 Q(nombre__icontains=destino_norm) |
+                Q(ubicacion__icontains=destino_norm) |
                 Q(calle__icontains=destino_norm) |
                 Q(descripcion__icontains=destino_norm)
             )
