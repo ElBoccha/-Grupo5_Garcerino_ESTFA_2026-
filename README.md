@@ -27,56 +27,33 @@ Arce Federico: PM
 
 **Color de Grupo:** Azul.
 
-## Ejecucion local
+## Instalación y ejecución local (desde cero)
 
-El proyecto Django esta dentro de la carpeta `Codigo`.
+**Requisitos previos:** [Python 3.10+](https://www.python.org/downloads/) (marcar "Add Python to PATH" al instalar; incluye pip) y [Git](https://git-scm.com/downloads).
 
-1. Entrar a la carpeta:
-   ```powershell
-   cd Codigo
-   ```
-2. Instalar dependencias en un entorno virtual nuevo:
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   pip install -r requirements.txt
-   ```
-3. Aplicar migraciones y correr la pagina:
-   ```powershell
-    python manage.py migrate
-    python manage.py runserver
-    ```
-
-Para correr las pruebas unitarias:
-```powershell
-python manage.py test
+1. Clonar el repositorio y entrar a la carpeta del proyecto:
+```bash
+   git clone https://github.com/ElBoccha/-Grupo5_Garcerino_ESTFA_2026-.git
+   cd -Grupo5_Garcerino_ESTFA_2026-/Codigo
 ```
 
-La pagina queda disponible en `http://127.0.0.1:8000/`.
+2. Crear y activar un entorno virtual nuevo (no usar `Codigo/venv`, fue creado en Linux):
+   - Windows (PowerShell): `python -m venv .venv` y luego `.\.venv\Scripts\Activate.ps1`
+   - Linux/macOS: `python3 -m venv .venv` y luego `source .venv/bin/activate`
 
-Tambien podes usar el iniciador del proyecto:
+3. Actualizar pip e instalar las dependencias (el `requirements.txt` está en la raíz del repo, un nivel arriba de `Codigo`):
+```bash
+   python -m pip install --upgrade pip
+   pip install -r ../requirements.txt
+```
+   Si `pip` no se reconoce, usar `python -m pip install -r ../requirements.txt`.
 
-```powershell
-.\Codigo\iniciar_servidor_actual.bat
+4. Crear la base de datos (SQLite) y levantar el servidor:
+```bash
+   python manage.py migrate
+   python manage.py runserver
 ```
 
-Ese archivo abre Django en `http://127.0.0.1:8020/` por defecto. Si `8000` muestra una version vieja, casi siempre significa que quedo otro servidor anterior abierto o que se esta ejecutando desde una carpeta distinta. La version correcta del proyecto es la que esta en `Codigo`.
+5. Abrir `http://127.0.0.1:8000/` en el navegador.
 
-Nota: no uses la carpeta `Codigo/venv` que quedo en el repositorio, porque fue creada en Linux y no funciona bien en Windows. Crea un entorno nuevo con los pasos de arriba.
-
-## Deploy en Render
-
-El repositorio incluye `render.yaml` para crear el servicio desde Render Blueprint.
-
-Importante: Render solo despliega lo que esta subido a GitHub en la rama conectada. Si localmente se ve el diseno nuevo pero Render muestra el viejo, primero hay que confirmar que los cambios de `Codigo/hotelghino/templates`, `Codigo/hotelghino/static/css/style4.css`, `Codigo/hotelghino/views.py` y `render.yaml` esten commiteados y pusheados.
-
-Si lo configuras manualmente en Render:
-
-- Root Directory: `Codigo`
-- Build Command: `bash build.sh`
-- Start Command: `gunicorn fierro.wsgi:application --log-file -`
-- Variables: `DEBUG=False`, `SECRET_KEY`, `ALLOWED_HOSTS=.onrender.com`, `CSRF_TRUSTED_ORIGINS=https://*.onrender.com`
-
-Si usas una URL propia de Render o un dominio personalizado, agrega ese host a `ALLOWED_HOSTS` y su origen HTTPS a `CSRF_TRUSTED_ORIGINS`.
-
-Diagrama de Gantt https://app.notion.com/p/769605c05ee783fe92398179e809bf2f?v=027605c05ee783ef84630838d31e9df7&source=copy_link
+> Si PowerShell bloquea la activación del entorno, ejecutar una vez: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
