@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, date
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render, redirect
@@ -160,71 +161,66 @@ def home(request):
         tipo='HT'
     ).prefetch_related('habitacion_set').order_by('-fecha_creacion')
 
-    # Obtener nombres y calles de hoteles reales en la base de datos
-    hoteles_bd = list(
-        Alojamiento.objects.filter(estado='A', tipo='HT')
-        .values_list('nombre', flat=True)
-        .distinct()
-    )
-    calles_bd = [
-        c.strip() for c in Alojamiento.objects.filter(estado='A', tipo='HT')
-        .values_list('calle', flat=True)
-        .distinct() if c and len(c.strip()) > 1
-    ]
-
-    # Lista de zonas y ciudades turísticas reconocidas de Argentina
+    # Ciudades y destinos turísticos clasificados por región
     ciudades_turisticas = [
         # Costa Atlántica
-        "Cariló",
-        "Claromecó",
-        "Las Grutas",
-        "Mar Azul",
-        "Mar de Ajó",
-        "Mar de las Pampas",
-        "Mar del Plata",
-        "Mar del Tuyú",
-        "Miramar",
-        "Monte Hermoso",
-        "Necochea",
-        "Pinamar",
-        "San Bernardo",
-        "San Clemente del Tuyú",
-        "Santa Clara del Mar",
-        "Valeria del Mar",
-        "Villa Gesell",
+        {"nombre": "Mar del Plata", "region": "Costa", "provincia": "Buenos Aires"},
+        {"nombre": "Mar del Tuyú", "region": "Costa", "provincia": "Partido de La Costa"},
+        {"nombre": "Pinamar", "region": "Costa", "provincia": "Buenos Aires"},
+        {"nombre": "Villa Gesell", "region": "Costa", "provincia": "Buenos Aires"},
+        {"nombre": "San Bernardo", "region": "Costa", "provincia": "Partido de La Costa"},
+        {"nombre": "Santa Clara del Mar", "region": "Costa", "provincia": "Mar Chiquita"},
+        {"nombre": "Cariló", "region": "Costa", "provincia": "Pinamar"},
+        {"nombre": "San Clemente del Tuyú", "region": "Costa", "provincia": "Partido de La Costa"},
+        {"nombre": "Mar de las Pampas", "region": "Costa", "provincia": "Villa Gesell"},
+        {"nombre": "Miramar", "region": "Costa", "provincia": "Buenos Aires"},
+        {"nombre": "Necochea", "region": "Costa", "provincia": "Buenos Aires"},
+        {"nombre": "Monte Hermoso", "region": "Costa", "provincia": "Buenos Aires"},
+        {"nombre": "Las Grutas", "region": "Costa", "provincia": "Río Negro"},
         # Patagonia y Lagos
-        "Bariloche",
-        "El Calafate",
-        "El Chaltén",
-        "Puerto Madryn",
-        "San Martín de los Andes",
-        "Ushuaia",
-        "Villa La Angostura",
+        {"nombre": "Bariloche", "region": "Patagonia", "provincia": "Río Negro"},
+        {"nombre": "San Martín de los Andes", "region": "Patagonia", "provincia": "Neuquén"},
+        {"nombre": "Villa La Angostura", "region": "Patagonia", "provincia": "Neuquén"},
+        {"nombre": "El Calafate", "region": "Patagonia", "provincia": "Santa Cruz"},
+        {"nombre": "El Chaltén", "region": "Patagonia", "provincia": "Santa Cruz"},
+        {"nombre": "Ushuaia", "region": "Patagonia", "provincia": "Tierra del Fuego"},
+        {"nombre": "Puerto Madryn", "region": "Patagonia", "provincia": "Chubut"},
         # Sierras y Centro
-        "Capilla del Monte",
-        "La Cumbrecita",
-        "Merlo",
-        "Mina Clavero",
-        "Sierra de la Ventana",
-        "Tandil",
-        "Villa Carlos Paz",
-        "Villa General Belgrano",
+        {"nombre": "Villa Carlos Paz", "region": "Sierras", "provincia": "Córdoba"},
+        {"nombre": "Villa General Belgrano", "region": "Sierras", "provincia": "Córdoba"},
+        {"nombre": "Merlo", "region": "Sierras", "provincia": "San Luis"},
+        {"nombre": "Mina Clavero", "region": "Sierras", "provincia": "Córdoba"},
+        {"nombre": "La Cumbrecita", "region": "Sierras", "provincia": "Córdoba"},
+        {"nombre": "Tandil", "region": "Sierras", "provincia": "Buenos Aires"},
+        {"nombre": "Sierra de la Ventana", "region": "Sierras", "provincia": "Buenos Aires"},
+        {"nombre": "Capilla del Monte", "region": "Sierras", "provincia": "Córdoba"},
         # Cuyo, Norte y Litoral
-        "Cafayate",
-        "Colón",
-        "Federación",
-        "Gualeguaychú",
-        "Puerto Iguazú",
-        "Purmamarca",
-        "San Rafael",
-        "Tilcara",
+        {"nombre": "Mendoza", "region": "Cuyo", "provincia": "Mendoza"},
+        {"nombre": "San Rafael", "region": "Cuyo", "provincia": "Mendoza"},
+        {"nombre": "Cafayate", "region": "Norte", "provincia": "Salta"},
+        {"nombre": "Purmamarca", "region": "Norte", "provincia": "Jujuy"},
+        {"nombre": "Tilcara", "region": "Norte", "provincia": "Jujuy"},
+        {"nombre": "Puerto Iguazú", "region": "Litoral", "provincia": "Misiones"},
+        {"nombre": "Colón", "region": "Litoral", "provincia": "Entre Ríos"},
+        {"nombre": "Federación", "region": "Litoral", "provincia": "Entre Ríos"},
+        {"nombre": "Gualeguaychú", "region": "Litoral", "provincia": "Entre Ríos"},
     ]
-    
-    # Combinar hoteles primero, luego calles y destinos turísticos
-    destinos_sugeridos = []
-    for item in hoteles_bd + calles_bd + sorted(ciudades_turisticas):
-        if item and item not in destinos_sugeridos:
-            destinos_sugeridos.append(item)
+
+    # Obtener hoteles activos registrados para sugerir también por nombre de hotel
+    hoteles_sugeridos = []
+    for h in Alojamiento.objects.filter(estado='A', tipo='HT').values('id', 'nombre', 'calle', 'numero_calle'):
+        nombre_clean = h['nombre'].strip()
+        if len(nombre_clean) >= 3:
+            ubicacion = f"{h['calle']} {h['numero_calle']}".strip()
+            hoteles_sugeridos.append({
+                'nombre': nombre_clean,
+                'region': 'Hotel',
+                'provincia': ubicacion or 'Hotel registrado',
+                'es_hotel': True,
+            })
+
+    # Lista plana para compatibilidad con datalist / formularios
+    destinos_sugeridos = [c['nombre'] for c in ciudades_turisticas]
 
     if destino:
         destino_lower = destino.lower()
@@ -247,12 +243,6 @@ def home(request):
                 Q(descripcion__icontains=destino_norm)
             )
 
-        # Mapeo de localidades de prueba
-        if 'tuyu' in destino_norm:
-            filtro_destino |= Q(nombre__icontains='beto') | Q(calle__icontains='andrade')
-        if 'santa clara' in destino_norm or 'clara' in destino_norm:
-            filtro_destino |= Q(nombre__icontains='sorro') | Q(calle__icontains='lag tio') | Q(nombre__icontains='costanera')
-
         alojamientos = alojamientos.filter(filtro_destino)
 
     if desde and hasta:
@@ -271,12 +261,16 @@ def home(request):
         except ValueError:
             pass
 
+    # Combinación para el autocompletado en JSON
+    combo_sugerencias = ciudades_turisticas + hoteles_sugeridos
+
     return render(request, 'home.html', {
         'alojamientos': alojamientos,
         'destino': destino,
         'desde': desde,
         'hasta': hasta,
         'destinos_sugeridos': destinos_sugeridos,
+        'combo_sugerencias_json': json.dumps(combo_sugerencias, ensure_ascii=False),
     })
 
 
@@ -847,3 +841,82 @@ def toggleDisponibilidadHabitacion(request, habitacion_id):
         return redirect('mis_hoteles')
 
     return redirect('mis_hoteles')
+
+
+@login_required
+def gestionarImagenesHotel(request, alojamiento_id):
+    """
+    Permite al propietario subir y eliminar imágenes de su hotel.
+    - GET: muestra galería actual + formulario de subida.
+    - POST action=subir: sube imagen principal y/o fotos extra.
+    - POST action=eliminar: elimina una imagen por id.
+    """
+    if request.user.rol not in ['P', 'A']:
+        messages.warning(request, 'Solo los propietarios pueden gestionar imágenes.')
+        return redirect('home')
+
+    alojamiento = get_object_or_404(
+        Alojamiento,
+        pk=alojamiento_id,
+        id_usuario=request.user,
+        tipo='HT'
+    )
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'eliminar':
+            imagen_id = request.POST.get('imagen_id')
+            if imagen_id:
+                ImagenAlojamiento.objects.filter(
+                    pk=imagen_id,
+                    alojamiento=alojamiento
+                ).delete()
+                messages.success(request, 'Imagen eliminada correctamente.')
+            return redirect('gestionar_imagenes', alojamiento_id=alojamiento.id)
+
+        if action == 'subir':
+            # Imagen principal
+            imagen_principal = request.FILES.get('imagen_principal')
+            if imagen_principal:
+                ImagenAlojamiento.objects.filter(
+                    alojamiento=alojamiento, es_principal=True
+                ).delete()
+                ImagenAlojamiento.objects.create(
+                    alojamiento=alojamiento,
+                    imagen=imagen_principal,
+                    es_principal=True,
+                    orden=0,
+                )
+                messages.success(request, 'Imagen principal actualizada.')
+
+            # Imágenes extra (múltiples)
+            imagenes_extra = request.FILES.getlist('imagenes_extra')
+            if imagenes_extra:
+                existentes = ImagenAlojamiento.objects.filter(
+                    alojamiento=alojamiento, es_principal=False
+                ).count()
+                permitidas = max(0, 10 - existentes)
+                for i, img in enumerate(imagenes_extra[:permitidas]):
+                    ImagenAlojamiento.objects.create(
+                        alojamiento=alojamiento,
+                        imagen=img,
+                        es_principal=False,
+                        orden=existentes + i + 1,
+                    )
+                if permitidas > 0:
+                    messages.success(request, f'Se subieron {min(len(imagenes_extra), permitidas)} imágenes adicionales.')
+                if len(imagenes_extra) > permitidas:
+                    messages.warning(request, f'Límite alcanzado: solo se cargaron {permitidas} de {len(imagenes_extra)} fotos (máximo 10 extra).')
+
+            return redirect('gestionar_imagenes', alojamiento_id=alojamiento.id)
+
+    img_principal = alojamiento.imagenes.filter(es_principal=True).first()
+    imgs_extra = alojamiento.imagenes.filter(es_principal=False).order_by('orden')
+
+    return render(request, 'gestionar-imagenes.html', {
+        'alojamiento': alojamiento,
+        'img_principal': img_principal,
+        'imgs_extra': imgs_extra,
+        'total_extra': imgs_extra.count(),
+    })

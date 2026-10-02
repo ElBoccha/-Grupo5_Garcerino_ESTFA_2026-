@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+
+{% block title %}Imágenes de {{ alojamiento.nombre }} - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="page">
+    <section class="section-heading">
+        <div>
+            <h1>Imágenes del hotel</h1>
+            <p>{{ alojamiento.nombre }}</p>
+        </div>
+        <a class="button button-secondary" href="{% url 'mis_hoteles' %}">← Volver a mis hoteles</a>
+    </section>
+
+    {% if messages %}
+        <div class="messages-container" style="margin-bottom:20px;">
+            {% for message in messages %}
+                <div class="alert alert--{{ message.tags }}" style="padding:12px 16px;border-radius:8px;margin-bottom:8px;font-size:14px;background:{% if 'success' in message.tags %}var(--success-bg,#d1fae5){% elif 'warning' in message.tags %}var(--warning-bg,#fef3c7){% else %}var(--error-bg,#fee2e2){% endif %};color:{% if 'success' in message.tags %}#065f46{% elif 'warning' in message.tags %}#92400e{% else %}#991b1b{% endif %};">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="img-manager">
+
+        <!-- IMAGEN PRINCIPAL -->
+        <section class="img-manager__section">
+            <h2 class="img-manager__title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Imagen principal (portada)
+            </h2>
+
+            {% if img_principal %}
+            <div class="img-manager__current">
+                <div class="img-manager__thumb-wrap">
+                    <img src="{{ img_principal.imagen.url }}" alt="Portada de {{ alojamiento.nombre }}" class="img-manager__thumb img-manager__thumb--principal">
+                    <span class="img-manager__badge">Portada actual</span>
+                </div>
+                <form method="post" onsubmit="return confirm('¿Seguro que querés eliminar la imagen principal?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="eliminar">
+                    <input type="hidden" name="imagen_id" value="{{ img_principal.id }}">
+                    <button type="submit" class="button button-danger button--sm">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        Eliminar portada
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <div class="img-manager__empty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <p>Sin imagen de portada</p>
+            </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" class="img-manager__form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="subir">
+                <label class="img-manager__label" for="id_imagen_principal">
+                    {% if img_principal %}Reemplazar portada{% else %}Subir imagen de portada{% endif %}
+                </label>
+                <div class="img-manager__file-row">
+                    <input type="file" name="imagen_principal" id="id_imagen_principal" accept="image/*" class="img-manager__file-input">
+                    <button type="submit" class="button button-accent button--sm">Guardar portada</button>
+                </div>
+                <small class="img-manager__hint">Formatos aceptados: JPG, PNG, WEBP. Se reemplaza la portada anterior.</small>
+            </form>
+        </section>
+
+        <!-- IMÁGENES EXTRA -->
+        <section class="img-manager__section">
+            <h2 class="img-manager__title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Galería de fotos
+                <span class="img-manager__counter">{{ total_extra }}/10</span>
+            </h2>
+
+            {% if imgs_extra %}
+            <div class="img-manager__gallery">
+                {% for img in imgs_extra %}
+                <div class="img-manager__gallery-item">
+                    <img src="{{ img.imagen.url }}" alt="Foto {{ forloop.counter }} de {{ alojamiento.nombre }}" class="img-manager__thumb">
+                    <form method="post" class="img-manager__delete-form" onsubmit="return confirm('¿Eliminar esta foto?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="eliminar">
+                        <input type="hidden" name="imagen_id" value="{{ img.id }}">
+                        <button type="submit" class="img-manager__delete-btn" title="Eliminar foto">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="img-manager__empty">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <p>No hay fotos en la galería todavía</p>
+            </div>
+            {% endif %}
+
+            {% if total_extra < 10 %}
+            <form method="post" enctype="multipart/form-data" class="img-manager__form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="subir">
+                <label class="img-manager__label" for="id_imagenes_extra">
+                    Agregar fotos a la galería (podés subir hasta {{ 10|add:"-"|add:total_extra }} más)
+                </label>
+                <div class="img-manager__file-row">
+                    <input type="file" name="imagenes_extra" id="id_imagenes_extra" accept="image/*" multiple class="img-manager__file-input">
+                    <button type="submit" class="button button-accent button--sm">Subir fotos</button>
+                </div>
+                <small class="img-manager__hint">Podés seleccionar varias fotos a la vez. Máximo 10 fotos en la galería.</small>
+            </form>
+            {% else %}
+            <p class="img-manager__hint" style="margin-top:12px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Límite de 10 fotos alcanzado. Eliminá alguna para poder agregar más.
+            </p>
+            {% endif %}
+        </section>
+    </div>
+</main>
+
+<style>
+.img-manager {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    max-width: 860px;
+}
+
+.img-manager__section {
+    background: var(--card-bg, #1e1e2e);
+    border: 1px solid var(--border, rgba(255,255,255,0.08));
+    border-radius: 14px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.img-manager__title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.img-manager__counter {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted, #888);
+    background: rgba(255,255,255,0.06);
+    padding: 2px 10px;
+    border-radius: 20px;
+}
+
+.img-manager__current {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.img-manager__thumb-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.img-manager__thumb {
+    width: 160px;
+    height: 110px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid var(--border, rgba(255,255,255,0.1));
+    display: block;
+}
+
+.img-manager__thumb--principal {
+    width: 200px;
+    height: 130px;
+}
+
+.img-manager__badge {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+}
+
+.img-manager__gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+}
+
+.img-manager__gallery-item {
+    position: relative;
+}
+
+.img-manager__gallery-item .img-manager__thumb {
+    width: 100%;
+    height: 100px;
+}
+
+.img-manager__delete-form {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+.img-manager__delete-btn {
+    background: rgba(220, 38, 38, 0.85);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+    padding: 0;
+}
+
+.img-manager__delete-btn:hover {
+    background: rgba(185, 28, 28, 1);
+}
+
+.img-manager__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted, #888);
+    font-size: 13px;
+    padding: 20px 0;
+}
+
+.img-manager__form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-top: 1px solid var(--border, rgba(255,255,255,0.06));
+    padding-top: 18px;
+}
+
+.img-manager__label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted, #aaa);
+}
+
+.img-manager__file-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.img-manager__file-input {
+    font-size: 13px;
+    color: var(--muted, #aaa);
+    flex: 1;
+    min-width: 0;
+}
+
+.img-manager__hint {
+    font-size: 12px;
+    color: var(--muted, #888);
+}
+
+.button--sm {
+    font-size: 13px;
+    padding: 6px 14px;
+}
+</style>
+{% endblock %}

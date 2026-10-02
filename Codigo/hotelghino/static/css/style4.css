@@ -883,12 +883,13 @@ label,
 
 .hero {
     position: relative;
+    z-index: 30;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
     padding: 64px 48px 108px;
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    overflow: visible;
     isolation: isolate;
     background: #16224f;
 }
@@ -896,10 +897,8 @@ label,
 .hero::before {
     content: "";
     position: absolute;
-    top: -15%;
-    left: -15%;
-    right: -15%;
-    bottom: -15%;
+    inset: 0;
+    border-radius: inherit;
     z-index: -2;
     background:
         radial-gradient(45% 55% at 22% 18%, rgba(255, 107, 74, 0.55), transparent 60%),
@@ -913,6 +912,7 @@ label,
     content: "";
     position: absolute;
     inset: 0;
+    border-radius: inherit;
     z-index: -1;
     background-image: url("https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=70");
     background-position: center;
@@ -950,26 +950,308 @@ label,
 .search-panel {
     position: relative;
     display: grid;
-    grid-template-columns: 1.3fr 0.85fr 0.85fr auto;
+    grid-template-columns: 1.4fr 0.85fr 0.85fr auto;
     align-items: end;
     gap: 14px;
     margin: 34px -8px -96px;
     padding: 22px 24px;
     border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.97);
-    backdrop-filter: blur(6px);
-    box-shadow: var(--shadow-lg);
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 20px 45px rgba(16, 26, 51, 0.16), 0 4px 12px rgba(16, 26, 51, 0.08);
     animation: rise-in var(--dur-slow) var(--ease-out-expo) both;
     animation-delay: 120ms;
+    z-index: 35;
 }
 
+.search-field-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.search-combo-group {
+    position: relative;
+    z-index: 50;
+}
+
+.search-field-group label,
 .search-panel label {
     color: var(--ink);
     font-family: var(--font-body);
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
+}
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.search-field-icon {
+    position: absolute;
+    left: 12px;
+    color: var(--muted);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.search-input-wrapper input {
+    padding-left: 38px;
+    padding-right: 32px;
+    width: 100%;
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+    z-index: 2;
+}
+
+.search-clear-btn:hover {
+    background: var(--bg-tint);
+    color: var(--ink);
+}
+
+.search-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 46px;
+    padding: 0 24px;
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------
+   Search combobox & destination suggestions
+   --------------------------------------------------------------- */
+
+.combo-suggestions-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 100%;
+    min-width: 320px;
+    max-width: 440px;
+    background: #ffffff !important;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-md);
+    box-shadow: 0 24px 54px rgba(16, 26, 51, 0.24), 0 8px 20px rgba(16, 26, 51, 0.12);
+    z-index: 99999;
+    overflow: hidden;
+    animation: comboFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes comboFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.combo-suggestions-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px 7px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+}
+
+.combo-suggestions-header .combo-hint {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: none;
+    color: var(--muted);
+}
+
+.combo-suggestions {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    max-height: 250px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.combo-suggestions::-webkit-scrollbar {
+    width: 6px;
+}
+.combo-suggestions::-webkit-scrollbar-track {
+    background: transparent;
+}
+.combo-suggestions::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 999px;
+}
+
+.combo-suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--ink);
+    transition: background 0.12s ease, transform 0.12s ease;
+    user-select: none;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.combo-suggestion-item:hover,
+.combo-suggestion-item.is-selected {
+    background: var(--blue-50);
+}
+
+.combo-suggestion-item.is-selected {
+    outline: 2px solid var(--blue-500);
+    outline-offset: -2px;
+}
+
+.combo-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--bg-tint);
+    color: var(--blue-600);
+    flex-shrink: 0;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.combo-icon.icon-hotel {
+    background: var(--blue-100);
+    color: var(--blue-700);
+}
+
+.combo-suggestion-item:hover .combo-icon,
+.combo-suggestion-item.is-selected .combo-icon {
+    background: #ffffff;
+    box-shadow: 0 2px 4px rgba(16, 26, 51, 0.08);
+}
+
+.combo-text-wrap {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.combo-text-primary {
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.combo-text-sub {
+    font-size: 11.5px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.combo-match {
+    color: var(--blue-600);
+    font-weight: 800;
+    background: rgba(42, 79, 224, 0.08);
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+.combo-tag {
+    margin-left: auto;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--bg-tint);
+    color: var(--muted);
+    flex-shrink: 0;
+}
+
+.combo-tag.tag-costa {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.combo-tag.tag-patagonia {
+    background: #e0f7fa;
+    color: #00695c;
+}
+
+.combo-tag.tag-sierras {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.combo-tag.tag-norte {
+    background: #ffedd5;
+    color: #9a3412;
+}
+
+.combo-tag.tag-cuyo {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+.combo-tag.tag-litoral {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.combo-tag.tag-hotel {
+    background: #eef2ff;
+    color: #1e40af;
+    font-weight: 800;
+}
+
+.combo-empty {
+    padding: 18px 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
 }
 
 .search-panel input {
@@ -1004,6 +1286,8 @@ label,
 }
 
 .section-heading {
+    position: relative;
+    z-index: 1;
     margin: 112px 0 26px;
 }
 
@@ -1044,6 +1328,8 @@ label,
    --------------------------------------------------------------- */
 
 .hotel-grid {
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 24px;
