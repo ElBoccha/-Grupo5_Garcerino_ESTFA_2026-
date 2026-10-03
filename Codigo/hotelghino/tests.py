@@ -579,5 +579,27 @@ class GeolocationLeafletTests(TestCase):
         self.assertContains(response, 'Hotel Sin Geo')
         self.assertContains(response, 'Sin fijar')
 
+    def test_servir_archivos_media_en_produccion(self):
+        import os
+        from django.conf import settings
+
+        os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+        test_file_path = os.path.join(settings.MEDIA_ROOT, 'test_media_render.txt')
+        with open(test_file_path, 'w', encoding='utf-8') as f:
+            f.write('test-media-content')
+
+        response = None
+        try:
+            response = self.client.get('/media/test_media_render.txt')
+            self.assertEqual(response.status_code, 200)
+            content = b''.join(response.streaming_content).decode('utf-8')
+            self.assertEqual(content, 'test-media-content')
+        finally:
+            if response is not None:
+                response.close()
+            if os.path.exists(test_file_path):
+                os.remove(test_file_path)
+
+
 
 
