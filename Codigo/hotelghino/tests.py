@@ -320,3 +320,264 @@ class PasswordResetTests(TestCase):
         })
         self.assertRedirects(login_response, reverse('home'))
 
+
+class GeolocationLeafletTests(TestCase):
+    def setUp(self):
+        self.propietario = Usuario.objects.create_user(
+            username='prop_geo',
+            password='Password123',
+            dni=55555555,
+            telefono='555555555',
+            rol='P'
+        )
+        self.huesped = Usuario.objects.create_user(
+            username='huesped_geo',
+            password='Password123',
+            dni=66666666,
+            telefono='666666666',
+            rol='H'
+        )
+
+    def test_creacion_hotel_con_geolocalizacion_real(self):
+        from hotelghino.models import Alojamiento
+        self.client.force_login(self.propietario)
+
+        response = self.client.post(reverse('registro_hoteles'), {
+            'nombre': 'Hotel Patagónico Bariloche',
+            'direccion_completa': 'Av. San Martín 450, San Carlos de Bariloche, Río Negro',
+            'ciudad': 'San Carlos de Bariloche',
+            'provincia': 'Río Negro',
+            'pais': 'Argentina',
+            'latitud': '-41.133472',
+            'longitud': '-71.310278',
+            'calle': 'Av. San Martín',
+            'numero_calle': '450',
+            'descripcion': 'Hermoso hotel de montaña con vista al lago.',
+        })
+        self.assertRedirects(response, reverse('mis_hoteles'))
+
+        hotel = Alojamiento.objects.get(nombre='Hotel Patagónico Bariloche')
+        self.assertTrue(hotel.tiene_coordenadas)
+        self.assertAlmostEqual(float(hotel.latitud), -41.133472, places=4)
+        self.assertAlmostEqual(float(hotel.longitud), -71.310278, places=4)
+        self.assertEqual(hotel.ciudad, 'San Carlos de Bariloche')
+        self.assertEqual(hotel.provincia, 'Río Negro')
+
+    def test_validacion_coordenadas_invalidas(self):
+        from hotelghino.forms import RegistroAlojamiento
+        form_lat_invalida = RegistroAlojamiento(data={
+            'nombre': 'Hotel Lat Inv',
+            'latitud': '95.5',
+            'longitud': '-58.38',
+            'descripcion': 'Test',
+        })
+        self.assertFalse(form_lat_invalida.is_valid())
+        self.assertIn('latitud', form_lat_invalida.errors)
+
+        form_lng_invalida = RegistroAlojamiento(data={
+            'nombre': 'Hotel Lng Inv',
+            'latitud': '-34.60',
+            'longitud': '-195.0',
+            'descripcion': 'Test',
+        })
+        self.assertFalse(form_lng_invalida.is_valid())
+        self.assertIn('longitud', form_lng_invalida.errors)
+
+    def test_detalle_hotel_muestra_seccion_ubicacion_y_como_llegar(self):
+        from hotelghino.models import Alojamiento
+        hotel = Alojamiento.objects.create(
+            nombre='Hotel Vista Panorámica',
+            direccion_completa='Av. Exequiel Bustillo Km 5, Bariloche',
+            ciudad='Bariloche',
+            provincia='Río Negro',
+            pais='Argentina',
+            latitud=-41.125000,
+            longitud=-71.340000,
+            calle='Av. Exequiel Bustillo',
+            numero_calle='5000',
+            descripcion='Hotel con vista al lago Nahuel Huapi.',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+
+        self.client.force_login(self.huesped)
+        response = self.client.get(reverse('detalle_hotel', args=[hotel.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Ubicación y cómo llegar')
+        self.assertContains(response, 'hotel-map-view')
+        self.assertContains(response, 'Cómo llegar')
+        self.assertContains(response, 'https://www.google.com/maps/dir/?api=1&amp;destination=')
+        self.assertContains(response, '-41.125000,-71.340000')
+        self.assertContains(response, 'Bariloche')
+        self.assertContains(response, 'Río Negro')
+
+    def test_hotel_antiguo_sin_coordenadas_no_rompe_detalle(self):
+        from hotelghino.models import Alojamiento
+        hotel_antiguo = Alojamiento.objects.create(
+            nombre='Hotel Histórico Sin Geo',
+            calle='Mitre',
+            numero_calle='100',
+            descripcion='Hotel antiguo sin coordenadas asignadas',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+
+        self.client.force_login(self.huesped)
+        response = self.client.get(reverse('detalle_hotel', args=[hotel_antiguo.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'La ubicación en el mapa de este alojamiento todavía no fue especificada')
+        self.assertNotContains(response, 'hotel-map-view')
+
+    def test_busqueda_por_ciudad_provincia_y_direccion(self):
+        from hotelghino.models import Alojamiento
+        Alojamiento.objects.create(
+            nombre='Posada del Valle',
+            direccion_completa='Ruta 40 Km 120, Cafayate, Salta',
+            ciudad='Cafayate',
+            provincia='Salta',
+            pais='Argentina',
+            latitud=-26.072222,
+            longitud=-65.976111,
+            descripcion='Bodega y posada en los valles calchaquíes',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+
+        self.client.force_login(self.huesped)
+
+        # Búsqueda por ciudad
+        resp_ciudad = self.client.get(reverse('home'), {'destino': 'Cafayate'})
+        self.assertContains(resp_ciudad, 'Posada del Valle')
+
+        # Búsqueda por provincia
+        resp_provincia = self.client.get(reverse('home'), {'destino': 'Salta'})
+        self.assertContains(resp_provincia, 'Posada del Valle')
+
+        # Búsqueda por término parcial con acento/sin acento
+        resp_norm = self.client.get(reverse('home'), {'destino': 'cafáyate'})
+        self.assertContains(resp_norm, 'Posada del Valle')
+
+    def test_home_incluye_datos_para_mapa_general_de_resultados(self):
+        from hotelghino.models import Alojamiento
+        Alojamiento.objects.create(
+            nombre='Hotel Mar del Plata Centro',
+            ciudad='Mar del Plata',
+            provincia='Buenos Aires',
+            pais='Argentina',
+            latitud=-38.005500,
+            longitud=-57.542600,
+            descripcion='Hotel en la peatonal San Martín.',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+
+        response = self.client.get(reverse('home'), {'destino': 'Mar del Plata'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'btn-toggle-results-map')
+        self.assertContains(response, 'general-results-map')
+        self.assertContains(response, '-38.0055')
+        self.assertContains(response, '-57.5426')
+
+    def test_carto_context_processor_and_base_config(self):
+        with self.settings(CARTO_API_KEY='cartotestkey123'):
+            response = self.client.get(reverse('home'))
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.context['CARTO_API_KEY'], 'cartotestkey123')
+            self.assertContains(response, 'HOTELGHINO_MAP_CONFIG')
+            self.assertContains(response, 'cartotestkey123')
+            self.assertContains(response, 'createCartoTileLayer')
+
+    def test_busqueda_combinada_nombre_y_ubicacion(self):
+        from hotelghino.models import Alojamiento
+        Alojamiento.objects.create(
+            nombre='Gran Hotel Austral',
+            ciudad='Ushuaia',
+            provincia='Tierra del Fuego',
+            pais='Argentina',
+            calle='San Martín',
+            numero_calle='100',
+            latitud=-54.807222,
+            longitud=-68.304444,
+            descripcion='Hotel en el fin del mundo.',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+
+        # Búsqueda combinada: parte del nombre + ciudad
+        resp_combinada = self.client.get(reverse('home'), {'destino': 'Gran Ushuaia'})
+        self.assertContains(resp_combinada, 'Gran Hotel Austral')
+
+        # Búsqueda con coma: ciudad + provincia
+        resp_coma = self.client.get(reverse('home'), {'destino': 'Ushuaia, Tierra del Fuego'})
+        self.assertContains(resp_coma, 'Gran Hotel Austral')
+
+    def test_modificar_hotel_actualiza_coordenadas(self):
+        from hotelghino.models import Alojamiento
+        hotel = Alojamiento.objects.create(
+            nombre='Hotel Original',
+            ciudad='Córdoba',
+            provincia='Córdoba',
+            latitud=-31.420083,
+            longitud=-64.188776,
+            descripcion='Original',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+
+        self.client.force_login(self.propietario)
+        resp_post = self.client.post(reverse('modificar_hotel', args=[hotel.id]), {
+            'nombre': 'Hotel Original Actualizado',
+            'direccion_completa': 'Av. Colón 500, Córdoba',
+            'ciudad': 'Córdoba Capital',
+            'provincia': 'Córdoba',
+            'pais': 'Argentina',
+            'calle': 'Av. Colón',
+            'numero_calle': '500',
+            'latitud': '-31.415000',
+            'longitud': '-64.190000',
+            'descripcion': 'Actualizado con nuevas coordenadas.',
+        })
+        self.assertRedirects(resp_post, reverse('mis_hoteles'))
+
+        hotel.refresh_from_db()
+        self.assertEqual(hotel.nombre, 'Hotel Original Actualizado')
+        self.assertAlmostEqual(float(hotel.latitud), -31.415000, places=4)
+        self.assertAlmostEqual(float(hotel.longitud), -64.190000, places=4)
+        self.assertEqual(hotel.ciudad, 'Córdoba Capital')
+
+    def test_admin_alojamientos_changelist_con_y_sin_coordenadas(self):
+        from hotelghino.models import Alojamiento
+        admin_user = Usuario.objects.create_superuser(
+            username='super_admin',
+            email='admin@test.com',
+            password='AdminPassword123',
+            dni=12312312,
+            telefono='12345678',
+            rol='A'
+        )
+        # Hotel con coordenadas
+        Alojamiento.objects.create(
+            nombre='Hotel Con Geo',
+            latitud=-34.60,
+            longitud=-58.38,
+            id_usuario=self.propietario,
+            estado='P'
+        )
+        # Hotel sin coordenadas (el que disparaba format_html sin args)
+        Alojamiento.objects.create(
+            nombre='Hotel Sin Geo',
+            latitud=None,
+            longitud=None,
+            id_usuario=self.propietario,
+            estado='P'
+        )
+
+        self.client.force_login(admin_user)
+        response = self.client.get('/admin/hotelghino/alojamiento/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hotel Con Geo')
+        self.assertContains(response, 'Hotel Sin Geo')
+        self.assertContains(response, 'Sin fijar')
+
+
+

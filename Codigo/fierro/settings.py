@@ -17,6 +17,19 @@ import sys
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Cargar variables de entorno desde archivo .env local si existe
+_env_file = BASE_DIR / '.env'
+if _env_file.exists():
+    with open(_env_file, 'r', encoding='utf-8') as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
+# Clave de API para teselas cartográficas de CARTO Basemaps
+CARTO_API_KEY = os.environ.get('CARTO_API_KEY', '').strip()
+
 
 def env_bool(name, default=False):
     value = os.environ.get(name)
@@ -74,6 +87,10 @@ if render_host:
     if origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(origin)
 
+# Política de Referer para servicios cartográficos (OpenStreetMap, CARTO, Nominatim)
+# Evita que el navegador elimine el header Referer en solicitudes cross-origin
+SECURE_REFERRER_POLICY = os.environ.get('SECURE_REFERRER_POLICY', 'strict-origin-when-cross-origin')
+
 
 # Application definition
 
@@ -116,6 +133,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'hotelghino.context_processors.admin_pending_hotels',
+                'hotelghino.context_processors.carto_context',
             ],
         },
     },

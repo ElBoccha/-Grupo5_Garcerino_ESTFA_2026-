@@ -107,12 +107,50 @@ class Alojamiento(models.Model):
     )
     ubicacion = models.CharField(
         max_length=100,
-        choices=UBICACIONES_REALES,
+        blank=True,
         default='Mar del Plata',
         verbose_name='Ubicación / Ciudad'
     )
-    calle = models.CharField(max_length=50)
-    numero_calle = models.CharField(max_length=10)
+    direccion_completa = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name='Dirección completa'
+    )
+    ciudad = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name='Ciudad o localidad'
+    )
+    provincia = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name='Provincia o región'
+    )
+    pais = models.CharField(
+        max_length=100,
+        blank=True,
+        default='Argentina',
+        verbose_name='País'
+    )
+    latitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        verbose_name='Latitud'
+    )
+    longitud = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        verbose_name='Longitud'
+    )
+    calle = models.CharField(max_length=50, blank=True, default='')
+    numero_calle = models.CharField(max_length=10, blank=True, default='')
     descripcion = models.TextField()
     id_usuario = models.ForeignKey(
         Usuario,
@@ -140,6 +178,35 @@ class Alojamiento(models.Model):
 
     def __str__(self):
         return f"{self.nombre} ({self.get_tipo_display()})"
+
+    @property
+    def tiene_coordenadas(self):
+        return self.latitud is not None and self.longitud is not None
+
+    def get_direccion_display(self):
+        if self.direccion_completa:
+            return self.direccion_completa
+        partes = [f"{self.calle} {self.numero_calle}".strip()]
+        if self.ciudad:
+            partes.append(self.ciudad)
+        elif self.ubicacion:
+            partes.append(self.ubicacion)
+        if self.provincia:
+            partes.append(self.provincia)
+        return ", ".join([p for p in partes if p])
+
+    def get_ubicacion_display_text(self):
+        if self.ciudad and self.provincia:
+            return f"{self.ciudad}, {self.provincia}"
+        if self.ciudad:
+            return self.ciudad
+        return self.ubicacion or self.pais or "Argentina"
+
+    def get_google_maps_url(self):
+        if self.tiene_coordenadas:
+            return f"https://www.google.com/maps/dir/?api=1&destination={self.latitud},{self.longitud}"
+        query = f"{self.nombre}, {self.get_direccion_display()}"
+        return f"https://www.google.com/maps/search/?api=1&query={query.replace(' ', '+')}"
 
 
 class Habitacion(models.Model):

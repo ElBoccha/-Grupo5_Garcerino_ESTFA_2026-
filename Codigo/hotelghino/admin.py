@@ -5,6 +5,7 @@ from django.urls import path, reverse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from .models import Usuario, Alojamiento, Habitacion, Promocion, SolicitudPropietario
 
 class UsuarioAdmin(UserAdmin):
@@ -86,9 +87,15 @@ class SolicitudPropietarioAdmin(admin.ModelAdmin):
         return redirect('admin:hotelghino_solicitudpropietario_changelist')
 
 class AlojamientoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'tipo', 'estado', 'id_usuario', 'fecha_creacion', 'acciones')
-    list_filter = ('estado', 'tipo')
-    search_fields = ('nombre', 'descripcion', 'id_usuario__username')
+    list_display = ('nombre', 'tipo', 'ciudad', 'provincia', 'tiene_coordenadas_display', 'estado', 'id_usuario', 'fecha_creacion', 'acciones')
+    list_filter = ('estado', 'tipo', 'provincia')
+    search_fields = ('nombre', 'ciudad', 'provincia', 'direccion_completa', 'descripcion', 'id_usuario__username')
+
+    def tiene_coordenadas_display(self, obj):
+        if obj.tiene_coordenadas:
+            return format_html('<span style="color: #16a34a; font-weight: bold;">&#10004; ({}, {})</span>', obj.latitud, obj.longitud)
+        return mark_safe('<span style="color: #94a3b8;">Sin fijar</span>')
+    tiene_coordenadas_display.short_description = 'Geolocalización'
 
     def get_urls(self):
         urls = super().get_urls()

@@ -116,11 +116,67 @@ class RegistroAlojamiento(forms.ModelForm):
         widget=forms.CheckboxSelectMultiple,
         label='Servicios del hotel',
     )
-    ubicacion = forms.ChoiceField(
-        choices=[('', '-- Seleccioná la ubicación del hotel --')] + list(Alojamiento.UBICACIONES_REALES),
-        label='Ubicación (Ciudad / Destino)',
-        required=True,
-        help_text='Seleccioná la ciudad turística real de tu alojamiento.',
+    ubicacion = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+    latitud = forms.DecimalField(
+        required=False,
+        max_digits=9,
+        decimal_places=6,
+        widget=forms.HiddenInput(),
+    )
+    longitud = forms.DecimalField(
+        required=False,
+        max_digits=9,
+        decimal_places=6,
+        widget=forms.HiddenInput(),
+    )
+    direccion_completa = forms.CharField(
+        required=False,
+        label='Dirección seleccionada',
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Buscá una dirección en el mapa o escribila aquí',
+            'id': 'id_direccion_completa',
+        }),
+        help_text='Podés buscar en el mapa interactivo o escribir la dirección directamente.',
+    )
+    ciudad = forms.CharField(
+        required=False,
+        label='Ciudad o localidad',
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Ej: San Carlos de Bariloche',
+            'id': 'id_ciudad',
+        }),
+    )
+    provincia = forms.CharField(
+        required=False,
+        label='Provincia o región',
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Ej: Río Negro',
+            'id': 'id_provincia',
+        }),
+    )
+    pais = forms.CharField(
+        required=False,
+        initial='Argentina',
+        widget=forms.HiddenInput(),
+    )
+    calle = forms.CharField(
+        required=False,
+        label='Calle',
+        widget=forms.TextInput(attrs={
+            "placeholder": "Ej: Av. San Martín",
+            "id": "id_calle",
+        }),
+    )
+    numero_calle = forms.CharField(
+        required=False,
+        label='Número',
+        widget=forms.TextInput(attrs={
+            "placeholder": "Ej: 450",
+            "id": "id_numero_calle",
+        }),
     )
     imagen_principal = forms.ImageField(
         required=False,
@@ -137,25 +193,84 @@ class RegistroAlojamiento(forms.ModelForm):
         model = Alojamiento
         fields = [
             "nombre",
-            "ubicacion",
+            "direccion_completa",
+            "ciudad",
+            "provincia",
+            "pais",
+            "latitud",
+            "longitud",
             "calle",
             "numero_calle",
+            "ubicacion",
             "descripcion",
             "servicios",
         ]
         labels = {
             "nombre": "Nombre del hotel",
-            "ubicacion": "Ubicación / Ciudad",
+            "direccion_completa": "Dirección completa",
+            "ciudad": "Ciudad / Localidad",
+            "provincia": "Provincia / Región",
             "calle": "Calle",
             "numero_calle": "Número",
             "descripcion": "Descripción",
         }
         widgets = {
+            "calle": forms.TextInput(attrs={
+                "placeholder": "Ej: Av. San Martín",
+                "id": "id_calle",
+            }),
+            "numero_calle": forms.TextInput(attrs={
+                "placeholder": "Ej: 1234",
+                "id": "id_numero_calle",
+            }),
             "descripcion": forms.Textarea(attrs={
                 "rows": 4,
                 "placeholder": "Servicios, ubicación, comodidades principales...",
             }),
         }
+
+    def clean_latitud(self):
+        lat = self.cleaned_data.get('latitud')
+        if lat is not None and (lat < -90 or lat > 90):
+            raise forms.ValidationError('La latitud debe ser un valor válido entre -90 y 90.')
+        return lat
+
+    def clean_longitud(self):
+        lng = self.cleaned_data.get('longitud')
+        if lng is not None and (lng < -180 or lng > 180):
+            raise forms.ValidationError('La longitud debe ser un valor válido entre -180 y 180.')
+        return lng
+
+    def clean(self):
+        cleaned_data = super().clean()
+        lat = cleaned_data.get('latitud')
+        lng = cleaned_data.get('longitud')
+        dir_comp = cleaned_data.get('direccion_completa', '').strip()
+        ciudad = cleaned_data.get('ciudad', '').strip()
+        calle = cleaned_data.get('calle', '').strip()
+        num_calle = cleaned_data.get('numero_calle', '').strip()
+
+        # Coherencia de coordenadas: deben estar ambas o ninguna
+        if (lat is not None and lng is None) or (lat is None and lng is not None):
+            self.add_error('latitud', 'Debés indicar tanto latitud como longitud.')
+
+        # Si no se completó direccion_completa pero sí calle y número, componerla
+        if not dir_comp and calle:
+            partes = [f"{calle} {num_calle}".strip()]
+            if ciudad:
+                partes.append(ciudad)
+            cleaned_data['direccion_completa'] = ", ".join(partes)
+
+        # Sincronizar ciudad / ubicacion
+        if ciudad and not cleaned_data.get('ubicacion'):
+            cleaned_data['ubicacion'] = ciudad[:100]
+
+        # Para nuevos alojamientos, exigir al menos una ubicación identificable
+        if not self.instance.pk:
+            if not dir_comp and not calle and not ciudad and lat is None:
+                self.add_error('direccion_completa', 'Debés indicar la ubicación del hotel en el mapa o ingresar su dirección.')
+
+        return cleaned_data
 
 
 class HabitacionLoteForm(forms.Form):

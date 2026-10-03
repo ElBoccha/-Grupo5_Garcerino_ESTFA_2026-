@@ -32,8 +32,8 @@
                 <div>
                     <span class="status-pill status-pill--{% if alojamiento.estado == 'A' %}activo{% elif alojamiento.estado == 'P' %}pendiente{% else %}rechazado{% endif %}">{{ alojamiento.get_estado_display }}</span>
                     <h2>Informacion del Hotel</h2>
-                    <p><strong>Ubicación:</strong> {{ alojamiento.get_ubicacion_display|default:alojamiento.ubicacion }}</p>
-                    <p><strong>Direccion:</strong> {{ alojamiento.calle }} {{ alojamiento.numero_calle }}</p>
+                    <p><strong>Ubicación:</strong> {{ alojamiento.get_ubicacion_display_text }}</p>
+                    <p><strong>Dirección:</strong> {{ alojamiento.get_direccion_display }}</p>
                     <p><strong>Tipo:</strong> {{ alojamiento.get_tipo_display }}</p>
                     <p><strong>Publicado por:</strong> {{ alojamiento.id_usuario.username }}</p>
                     
@@ -57,6 +57,40 @@
                             {% endfor %}
                         </div>
                     {% endif %}
+
+                    <!-- Sección: Ubicación y cómo llegar (Leaflet.js + OpenStreetMap) -->
+                    <div class="hotel-location-map-block" style="margin-top: 24px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                            <h3 style="margin: 0; font-size: 18px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; color: var(--ink);">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                Ubicación y cómo llegar
+                            </h3>
+                            {% if alojamiento.tiene_coordenadas %}
+                            <a href="{{ alojamiento.get_google_maps_url }}" target="_blank" rel="noopener noreferrer" class="button button-accent" style="font-size: 13px; padding: 7px 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+                                Cómo llegar
+                            </a>
+                            {% endif %}
+                        </div>
+
+                        <!-- Información detallada de ubicación -->
+                        <div style="background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 13.5px; color: #334155; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
+                            <div><strong>Dirección:</strong> {{ alojamiento.get_direccion_display }}</div>
+                            {% if alojamiento.ciudad %}<div><strong>Ciudad / Localidad:</strong> {{ alojamiento.ciudad }}</div>{% endif %}
+                            {% if alojamiento.provincia %}<div><strong>Provincia:</strong> {{ alojamiento.provincia }}</div>{% endif %}
+                            <div><strong>País:</strong> {{ alojamiento.pais|default:"Argentina" }}</div>
+                        </div>
+
+                        {% if alojamiento.tiene_coordenadas %}
+                            <div id="hotel-map-view" style="width: 100%; height: 380px; border-radius: 12px; border: 1px solid var(--line); overflow: hidden; background: #e2e8f0; position: relative; z-index: 1;"></div>
+                        {% else %}
+                            <div style="padding: 24px; border-radius: 12px; border: 1px dashed var(--line); background: #f8fafc; text-align: center; color: var(--muted); font-size: 13.5px;">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" style="margin-bottom: 6px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                <p style="margin: 0 0 8px; color: var(--ink);">La ubicación en el mapa de este alojamiento todavía no fue especificada por su propietario.</p>
+                                <p style="margin: 0; font-size: 13px;">Dirección registrada: <strong>{{ alojamiento.get_direccion_display }}</strong></p>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
 
@@ -144,6 +178,14 @@
                 <div class="panel-header">
                     <h2>Realizar Reserva</h2>
                     <p>Seleccioná una habitación disponible para tus fechas del <strong>{{ d_inicio }}</strong> al <strong>{{ d_fin }}</strong>.</p>
+                </div>
+
+                <div class="reserva-ubicacion-info" style="margin-bottom: 16px; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13.5px; color: #334155; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--blue-600); flex-shrink: 0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        <span><strong>{{ alojamiento.nombre }}</strong> &bull; {{ alojamiento.get_direccion_display }}</span>
+                    </div>
+                    <a href="{{ alojamiento.get_google_maps_url }}" target="_blank" rel="noopener noreferrer" style="font-size: 12.5px; color: var(--blue-600); font-weight: 600; text-decoration: none;">Ver mapa &rarr;</a>
                 </div>
 
                 <form method="post" class="form-stack">
@@ -363,4 +405,78 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+{% if alojamiento.tiene_coordenadas %}
+<script>
+(function() {
+    function initHotelDetailMap() {
+        const mapDiv = document.getElementById('hotel-map-view');
+        if (!mapDiv) return;
+
+        if (typeof L === 'undefined') {
+            setTimeout(initHotelDetailMap, 80);
+            return;
+        }
+
+        if (mapDiv._leaflet_id) {
+            return;
+        }
+
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        });
+
+        const lat = parseFloat("{{ alojamiento.latitud|stringformat:'f' }}");
+        const lng = parseFloat("{{ alojamiento.longitud|stringformat:'f' }}");
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const map = L.map(mapDiv, {
+            center: [lat, lng],
+            zoom: 15,
+            zoomControl: true,
+            scrollWheelZoom: true,
+        });
+
+        (typeof window.createCartoTileLayer === 'function'
+            ? window.createCartoTileLayer()
+            : L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                subdomains: 'abcd',
+                maxZoom: 20,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> colaboradores &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
+            })
+        ).addTo(map);
+
+        const marker = L.marker([lat, lng], {
+            title: "{{ alojamiento.nombre|escapejs }}"
+        }).addTo(map);
+
+        const popupContent = `
+            <div style="font-family: inherit; font-size: 13px; line-height: 1.4; padding: 2px;">
+                <strong style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 3px;">{{ alojamiento.nombre|escapejs }}</strong>
+                <span style="color: #475569; display: block; margin-bottom: 6px;">{{ alojamiento.get_direccion_display|escapejs }}</span>
+                <a href="{{ alojamiento.get_google_maps_url }}" target="_blank" rel="noopener" style="color: #2563eb; font-weight: 600; text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                    Cómo llegar &rarr;
+                </a>
+            </div>
+        `;
+        marker.bindPopup(popupContent).openPopup();
+
+        setTimeout(function() { map.invalidateSize(); }, 150);
+        setTimeout(function() { map.invalidateSize(); }, 400);
+        setTimeout(function() { map.invalidateSize(); }, 800);
+        window.addEventListener('resize', function() { map.invalidateSize(); });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHotelDetailMap);
+    } else {
+        initHotelDetailMap();
+    }
+})();
+</script>
+{% endif %}
 {% endblock %}

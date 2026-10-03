@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, date
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render, redirect
@@ -155,11 +156,11 @@ def home(request):
     desde = request.GET.get('desde', '').strip()
     hasta = request.GET.get('hasta', '').strip()
 
-    # Obtener solo hoteles aprobados (activos) ordenados por fecha
+    # Obtener solo hoteles aprobados (activos) ordenados por fecha con prefetch de habitaciones e imágenes
     alojamientos = Alojamiento.objects.filter(
         estado='A',
         tipo='HT'
-    ).prefetch_related('habitacion_set').order_by('-fecha_creacion')
+    ).prefetch_related('habitacion_set', 'imagenes').order_by('-fecha_creacion')
 
     # Ciudades y destinos turísticos clasificados por región
     ciudades_turisticas = [
@@ -208,14 +209,16 @@ def home(request):
 
     # Obtener hoteles activos registrados para sugerir también por nombre de hotel y ubicación
     hoteles_sugeridos = []
-    for h in Alojamiento.objects.filter(estado='A', tipo='HT').values('id', 'nombre', 'ubicacion', 'calle', 'numero_calle'):
+    for h in Alojamiento.objects.filter(estado='A', tipo='HT').values('id', 'nombre', 'ciudad', 'provincia', 'ubicacion', 'direccion_completa', 'calle', 'numero_calle'):
         nombre_clean = h['nombre'].strip()
         if len(nombre_clean) >= 3:
-            ubicacion_info = f"{h['ubicacion']} &bull; {h['calle']} {h['numero_calle']}".strip(' &bull;')
+            loc_label = h['ciudad'] or h['ubicacion']
+            if h['provincia'] and h['provincia'] != loc_label:
+                loc_label = f"{loc_label}, {h['provincia']}" if loc_label else h['provincia']
             hoteles_sugeridos.append({
                 'nombre': nombre_clean,
                 'region': 'Hotel',
-                'provincia': h['ubicacion'] or ubicacion_info or 'Hotel registrado',
+                'provincia': loc_label or h['direccion_completa'] or 'Hotel registrado',
                 'es_hotel': True,
             })
 
@@ -223,29 +226,77 @@ def home(request):
     destinos_sugeridos = [c['nombre'] for c in ciudades_turisticas]
 
     if destino:
-        destino_lower = destino.lower()
-        destino_norm = (
-            destino_lower.replace('á', 'a')
-            .replace('é', 'e')
-            .replace('í', 'i')
-            .replace('ó', 'o')
-            .replace('ú', 'u')
+        def normalizar(txt):
+            if not txt:
+                return ''
+            t = txt.lower()
+            return (
+                t.replace('á', 'a')
+                .replace('é', 'e')
+                .replace('í', 'i')
+                .replace('ó', 'o')
+                .replace('ú', 'u')
+            )
+
+        destino_clean = destino.strip()
+        destino_norm = normalizar(destino_clean)
+
+        # 1. Búsqueda directa por la frase completa en todos los campos relevantes
+        filtro_frase = (
+            Q(nombre__icontains=destino_clean) |
+            Q(ciudad__icontains=destino_clean) |
+            Q(provincia__icontains=destino_clean) |
+            Q(pais__icontains=destino_clean) |
+            Q(direccion_completa__icontains=destino_clean) |
+            Q(ubicacion__icontains=destino_clean) |
+            Q(calle__icontains=destino_clean) |
+            Q(descripcion__icontains=destino_clean)
         )
-        filtro_destino = (
-            Q(nombre__icontains=destino) |
-            Q(ubicacion__icontains=destino) |
-            Q(calle__icontains=destino) |
-            Q(descripcion__icontains=destino)
-        )
-        if destino_norm != destino_lower:
-            filtro_destino |= (
+        if destino_norm != destino_clean.lower():
+            filtro_frase |= (
                 Q(nombre__icontains=destino_norm) |
+                Q(ciudad__icontains=destino_norm) |
+                Q(provincia__icontains=destino_norm) |
+                Q(pais__icontains=destino_norm) |
+                Q(direccion_completa__icontains=destino_norm) |
                 Q(ubicacion__icontains=destino_norm) |
                 Q(calle__icontains=destino_norm) |
                 Q(descripcion__icontains=destino_norm)
             )
 
-        alojamientos = alojamientos.filter(filtro_destino)
+        # 2. Búsqueda multi-término: ej. "Hotel del Sol Mar del Plata" o "Bariloche, Río Negro"
+        # Permite combinar nombre + ubicación en una única consulta
+        palabras = [p.strip() for p in re.split(r'[,+\s]+', destino_clean) if len(p.strip()) >= 3]
+        if len(palabras) > 1:
+            filtro_palabras = Q()
+            for pal in palabras:
+                pal_norm = normalizar(pal)
+                sub_q = (
+                    Q(nombre__icontains=pal) |
+                    Q(ciudad__icontains=pal) |
+                    Q(provincia__icontains=pal) |
+                    Q(pais__icontains=pal) |
+                    Q(direccion_completa__icontains=pal) |
+                    Q(ubicacion__icontains=pal) |
+                    Q(calle__icontains=pal)
+                )
+                if pal_norm != pal.lower():
+                    sub_q |= (
+                        Q(nombre__icontains=pal_norm) |
+                        Q(ciudad__icontains=pal_norm) |
+                        Q(provincia__icontains=pal_norm) |
+                        Q(pais__icontains=pal_norm) |
+                        Q(direccion_completa__icontains=pal_norm) |
+                        Q(ubicacion__icontains=pal_norm) |
+                        Q(calle__icontains=pal_norm)
+                    )
+                filtro_palabras &= sub_q
+
+            filtro_final = filtro_frase | filtro_palabras
+        else:
+            filtro_final = filtro_frase
+
+        alojamientos = alojamientos.filter(filtro_final).distinct()
 
     if desde and hasta:
         try:
@@ -263,6 +314,25 @@ def home(request):
         except ValueError:
             pass
 
+    # Preparar datos geográficos de los hoteles filtrados para el mapa de resultados (Leaflet)
+    hoteles_mapa = []
+    for h in alojamientos:
+        if h.latitud is not None and h.longitud is not None:
+            habs = list(h.habitacion_set.all())
+            precio_min = min([hab.precio_noche for hab in habs], default=None) if habs else None
+            img_p = h.imagenes.filter(es_principal=True).first() or h.imagenes.first()
+            hoteles_mapa.append({
+                'id': h.id,
+                'nombre': h.nombre,
+                'lat': float(h.latitud),
+                'lng': float(h.longitud),
+                'ubicacion': h.get_ubicacion_display_text(),
+                'direccion': h.get_direccion_display(),
+                'precio_min': precio_min,
+                'detalle_url': f"/hoteles/{h.id}/",
+                'img_url': img_p.imagen.url if img_p else None,
+            })
+
     # Combinación para el autocompletado en JSON
     combo_sugerencias = ciudades_turisticas + hoteles_sugeridos
 
@@ -273,6 +343,8 @@ def home(request):
         'hasta': hasta,
         'destinos_sugeridos': destinos_sugeridos,
         'combo_sugerencias_json': json.dumps(combo_sugerencias, ensure_ascii=False),
+        'hoteles_mapa_json': json.dumps(hoteles_mapa, ensure_ascii=False),
+        'tiene_hoteles_con_mapa': len(hoteles_mapa) > 0,
     })
 
 

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ titulo }} - Hotelghino{% endblock %}
 
@@ -55,33 +56,99 @@
                 {% if form.nombre.errors %}<span class="form-error">{{ form.nombre.errors|join:", " }}</span>{% endif %}
             </label>
 
-            <label for="id_ubicacion_mod">
-                Ubicación (Destino turístico real)
-                <select name="ubicacion" id="id_ubicacion_mod" required>
-                    {% for val, label in form.fields.ubicacion.choices %}
-                        <option value="{{ val }}" {% if form.ubicacion.value == val or alojamiento.ubicacion == val %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-                {% if form.ubicacion.errors %}<span class="form-error">{{ form.ubicacion.errors|join:", " }}</span>{% endif %}
-                <span class="helptext">Seleccioná la ciudad turística donde está ubicado el hotel.</span>
-            </label>
+            <div class="form-section map-location-section">
+                <h3>Ubicación del alojamiento</h3>
+                <p class="helptext">Buscá la dirección con autocompletado o hacé clic en el mapa para ajustar la ubicación exacta.</p>
 
-            <div class="form-row">
-                <label for="id_calle_mod">
-                    Calle
-                    <input id="id_calle_mod" type="text" name="calle" value="{{ form.calle.value|default:'' }}" placeholder="Av. Colón" required>
-                    {% if form.calle.errors %}<span class="form-error">{{ form.calle.errors|join:", " }}</span>{% endif %}
+                <div class="map-search-field" style="margin-bottom: 12px; position: relative;">
+                    <label for="map-autocomplete-input" style="font-weight: 600;">
+                        Buscar dirección, lugar o ciudad
+                        <div class="search-input-wrapper" style="margin-top: 6px; position: relative;">
+                            <span class="search-field-icon" aria-hidden="true" style="color: var(--blue-600);">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </span>
+                            <input 
+                                type="text" 
+                                id="map-autocomplete-input" 
+                                placeholder="Ej: Av. San Martín 450, Bariloche ó Hotel del Sol..." 
+                                autocomplete="off"
+                                style="padding-left: 42px;"
+                            >
+                            <ul id="map-search-results" style="display: none; position: absolute; z-index: 1000; left: 0; right: 0; top: 100%; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-height: 220px; overflow-y: auto; list-style: none; padding: 0; margin: 4px 0 0 0;"></ul>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="hotel-map-container" style="position: relative; width: 100%; height: 350px; border-radius: 12px; border: 1px solid var(--line); overflow: hidden; background: #e2e8f0; margin-bottom: 12px; z-index: 1;">
+                    <div id="hotel-map" style="width: 100%; height: 100%;"></div>
+                </div>
+
+                <div class="map-instructions" style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); margin-bottom: 14px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="10" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span>Hacé clic en el mapa o arrastrá el marcador para fijar la posición exacta del hotel.</span>
+                </div>
+
+                <!-- Dirección seleccionada visible -->
+                <label for="id_direccion_completa">
+                    Dirección seleccionada / completa
+                    <input 
+                        type="text" 
+                        name="direccion_completa" 
+                        id="id_direccion_completa" 
+                        value="{{ form.direccion_completa.value|default:alojamiento.direccion_completa|default:'' }}" 
+                        placeholder="Ej: Av. San Martín 450, Bariloche, Río Negro"
+                    >
+                    {% if form.direccion_completa.errors %}<span class="form-error">{{ form.direccion_completa.errors|join:", " }}</span>{% endif %}
+                    <span class="helptext">Podés verificar o ajustar cómo se mostrará la dirección pública.</span>
                 </label>
-                <label for="id_numero_calle_mod">
-                    Número
-                    <input id="id_numero_calle_mod" type="text" name="numero_calle" value="{{ form.numero_calle.value|default:'' }}" placeholder="1234" required>
-                    {% if form.numero_calle.errors %}<span class="form-error">{{ form.numero_calle.errors|join:", " }}</span>{% endif %}
-                </label>
+
+                <div class="form-row">
+                    <label for="id_ciudad">
+                        Ciudad / Localidad
+                        <input type="text" name="ciudad" id="id_ciudad" value="{{ form.ciudad.value|default:alojamiento.ciudad|default:'' }}" placeholder="Ej: Bariloche">
+                        {% if form.ciudad.errors %}<span class="form-error">{{ form.ciudad.errors|join:", " }}</span>{% endif %}
+                    </label>
+                    <label for="id_provincia">
+                        Provincia / Región
+                        <input type="text" name="provincia" id="id_provincia" value="{{ form.provincia.value|default:alojamiento.provincia|default:'' }}" placeholder="Ej: Río Negro">
+                        {% if form.provincia.errors %}<span class="form-error">{{ form.provincia.errors|join:", " }}</span>{% endif %}
+                    </label>
+                </div>
+
+                <div class="form-row">
+                    <label for="id_calle">
+                        Calle
+                        <input id="id_calle" type="text" name="calle" value="{{ form.calle.value|default:alojamiento.calle|default:'' }}" placeholder="Av. San Martín">
+                        {% if form.calle.errors %}<span class="form-error">{{ form.calle.errors|join:", " }}</span>{% endif %}
+                    </label>
+                    <label for="id_numero_calle">
+                        Número
+                        <input id="id_numero_calle" type="text" name="numero_calle" value="{{ form.numero_calle.value|default:alojamiento.numero_calle|default:'' }}" placeholder="450">
+                        {% if form.numero_calle.errors %}<span class="form-error">{{ form.numero_calle.errors|join:", " }}</span>{% endif %}
+                    </label>
+                </div>
+
+                <!-- Coordenadas ocultas y estado -->
+                <input type="hidden" name="pais" id="id_pais" value="{{ form.pais.value|default:alojamiento.pais|default:'Argentina' }}">
+                <input type="hidden" name="latitud" id="id_latitud" value="{{ form.latitud.value|default:alojamiento.latitud|default:'' }}">
+                <input type="hidden" name="longitud" id="id_longitud" value="{{ form.longitud.value|default:alojamiento.longitud|default:'' }}">
+                <input type="hidden" name="ubicacion" id="id_ubicacion" value="{{ form.ubicacion.value|default:alojamiento.ubicacion|default:'' }}">
+
+                <div id="coords-status-badge" style="font-size: 12.5px; padding: 6px 12px; border-radius: 8px; background: {% if alojamiento.latitud and alojamiento.longitud %}#dcfce7{% else %}#f1f5f9{% endif %}; color: {% if alojamiento.latitud and alojamiento.longitud %}#15803d{% else %}#475569{% endif %}; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span id="coords-text">
+                        {% if alojamiento.latitud and alojamiento.longitud %}
+                            Coordenadas fijadas: {{ alojamiento.latitud }}, {{ alojamiento.longitud }}
+                        {% else %}
+                            Coordenadas: seleccioná en el mapa para fijar latitud y longitud.
+                        {% endif %}
+                    </span>
+                </div>
             </div>
 
             <label for="id_descripcion_mod">
                 Descripción
-                <textarea id="id_descripcion_mod" name="descripcion" rows="4" placeholder="Servicios, ubicación, comodidades principales..." required>{{ form.descripcion.value|default:'' }}</textarea>
+                <textarea id="id_descripcion_mod" name="descripcion" rows="4" placeholder="Servicios, ubicación, comodidades principales..." required>{{ form.descripcion.value|default:alojamiento.descripcion|default:'' }}</textarea>
                 {% if form.descripcion.errors %}<span class="form-error">{{ form.descripcion.errors|join:", " }}</span>{% endif %}
             </label>
 
@@ -141,6 +208,9 @@
         </form>
 
         <p class="panel-footer"><a href="{% url 'mis_hoteles' %}">Volver a mis hoteles</a></p>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+        <script src="{% static 'js/hotel-map-picker.js' %}?v=2.0"></script>
     </section>
 </main>
 {% endblock %}

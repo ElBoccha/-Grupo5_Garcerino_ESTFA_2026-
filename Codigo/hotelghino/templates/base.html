@@ -9,6 +9,37 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script>
+        window.HOTELGHINO_MAP_CONFIG = {
+            cartoApiKey: "{{ CARTO_API_KEY|default:''|escapejs }}",
+            getTileUrl: function() {
+                var key = (this.cartoApiKey || '').trim();
+                var base = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+                return key ? (base + '?key=' + encodeURIComponent(key)) : base;
+            },
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> colaboradores &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        };
+
+        window.createCartoTileLayer = function(options) {
+            options = options || {};
+            var cfg = window.HOTELGHINO_MAP_CONFIG || {};
+            var subdomains = options.subdomains || cfg.subdomains || 'abcd';
+            var maxZoom = options.maxZoom || cfg.maxZoom || 20;
+            var attribution = options.attribution || cfg.attribution;
+            var tileUrl = (cfg.getTileUrl && typeof cfg.getTileUrl === 'function')
+                ? cfg.getTileUrl()
+                : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+            return L.tileLayer(tileUrl, {
+                subdomains: subdomains,
+                maxZoom: maxZoom,
+                attribution: attribution
+            });
+        };
+    </script>
     <link rel="icon" type="image/png" href="{% static 'images/logo.png' %}">
     <link rel="stylesheet" href="{% static 'css/style4.css' %}?v=1.2">
 </head>
