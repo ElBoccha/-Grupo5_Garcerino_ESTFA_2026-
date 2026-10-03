@@ -130,28 +130,28 @@
                         <span class="status-pill status-pill--{% if alojamiento.estado == 'A' %}activo{% elif alojamiento.estado == 'P' %}pendiente{% else %}rechazado{% endif %}">{{ alojamiento.get_estado_display }}</span>
                     </div>
                     <div class="hotel-card-body">
-                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
-                            <h3 style="margin-bottom: 2px;">{{ alojamiento.nombre }}</h3>
+                        <div class="hotel-card-header">
+                            <h3 class="hotel-card-title">{{ alojamiento.nombre }}</h3>
                             {% if alojamiento.tiene_coordenadas %}
-                            <a href="{{ alojamiento.get_google_maps_url }}" target="_blank" rel="noopener noreferrer" style="font-size: 12px; color: var(--blue-600); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; text-decoration: none; padding: 2px 6px; border-radius: 6px; background: #eff6ff;" title="Abrir ubicación en Google Maps">
+                            <a href="{{ alojamiento.get_google_maps_url }}" target="_blank" rel="noopener noreferrer" class="hotel-card-map-link" title="Abrir ubicación en Google Maps">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
                                 Mapa
                             </a>
                             {% endif %}
                         </div>
-                        <p class="hotel-card-ubicacion" style="display: inline-flex; align-items: center; gap: 5px; color: var(--blue-600); font-weight: 600; font-size: 13.5px; margin-bottom: 2px;">
+                        <p class="hotel-card-ubicacion">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                            {{ alojamiento.get_ubicacion_display_text }}
+                            <span>{{ alojamiento.get_ubicacion_display_text }}</span>
                         </p>
-                        <p style="color: var(--muted); font-size: 13px; margin-bottom: 6px;">{{ alojamiento.get_direccion_display }}</p>
-                        <p>{{ alojamiento.descripcion|truncatewords:20 }}</p>
+                        <p class="hotel-card-address">{{ alojamiento.get_direccion_display }}</p>
+                        <p class="hotel-card-description">{{ alojamiento.descripcion|default:"Sin descripción adicional disponible." }}</p>
                         
-                        <div style="display: flex; gap: 6px; margin: 8px 0; color: var(--blue-600);">
+                        <div class="hotel-card-servicios">
                             {% for servicio in alojamiento.servicios.all|slice:":3" %}
-                                <span title="{{ servicio.nombre }}" style="width: 18px; height: 18px;">{{ servicio.icono_svg|safe }}</span>
+                                <span title="{{ servicio.nombre }}" class="hotel-servicio-icon">{{ servicio.icono_svg|safe }}</span>
                             {% endfor %}
                             {% if alojamiento.servicios.count > 3 %}
-                                <span style="font-size: 12px; font-weight: 600; color: var(--ink);">+{{ alojamiento.servicios.count|add:"-3" }}</span>
+                                <span class="hotel-servicio-more">+{{ alojamiento.servicios.count|add:"-3" }}</span>
                             {% endif %}
                         </div>
 
