@@ -254,8 +254,29 @@ class Reserva(models.Model):
         verbose_name = 'Reserva'
         verbose_name_plural = 'Reservas'
 
+    def clean(self):
+        super().clean()
+        from django.core.exceptions import ValidationError
+        from .utils import obtener_fecha_limite_reserva
+
+        hoy = timezone.now().date()
+        max_fecha = obtener_fecha_limite_reserva(hoy)
+
+        if self.fecha_inicio and not self.pk and self.fecha_inicio < hoy:
+            raise ValidationError({'fecha_inicio': 'La fecha de ingreso no puede ser anterior a hoy.'})
+
+        if self.fecha_inicio and self.fecha_inicio > max_fecha:
+            raise ValidationError({'fecha_inicio': 'La fecha de ingreso no puede superar 1 año en adelante.'})
+
+        if self.fecha_finalizacion and self.fecha_finalizacion > max_fecha:
+            raise ValidationError({'fecha_finalizacion': 'La fecha de salida no puede superar 1 año en adelante.'})
+
+        if self.fecha_inicio and self.fecha_finalizacion and self.fecha_inicio >= self.fecha_finalizacion:
+            raise ValidationError({'fecha_finalizacion': 'La fecha de salida debe ser posterior a la fecha de ingreso.'})
+
     def __str__(self):
         return f"Reserva {self.id} - {self.id_alohamiento.nombre} ({self.id_usuario.username})"
+
 
 
 class Promocion(models.Model):

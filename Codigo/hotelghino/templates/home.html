@@ -47,13 +47,14 @@
 
             <div class="search-field-group">
                 <label for="campo-desde">Desde</label>
-                <input type="date" name="desde" id="campo-desde" value="{{ desde }}">
+                <input type="date" name="desde" id="campo-desde" value="{{ desde }}" min="{{ min_fecha }}" max="{{ max_fecha }}">
             </div>
 
             <div class="search-field-group">
                 <label for="campo-hasta">Hasta</label>
-                <input type="date" name="hasta" id="campo-hasta" value="{{ hasta }}">
+                <input type="date" name="hasta" id="campo-hasta" value="{{ hasta }}" min="{{ min_fecha }}" max="{{ max_fecha }}">
             </div>
+
 
             <button class="button button-accent search-submit-btn" type="submit">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -161,9 +162,9 @@
                         </div>
                         <div class="hotel-card-cta">
                             {% if user.is_authenticated %}
-                                <a class="button button-primary" href="{% url 'detalle_hotel' alojamiento.id %}{% if desde or hasta %}?desde={{ desde }}&hasta={{ hasta }}{% endif %}">Ver hotel y reservar</a>
+                                <a class="button button-primary" href="{% url 'detalle_hotel' alojamiento.id %}{% if fechas_validas and desde and hasta %}?desde={{ desde }}&hasta={{ hasta }}{% endif %}">Ver hotel y reservar</a>
                             {% else %}
-                                <a class="button button-primary" href="{% url 'login' %}?next={% url 'detalle_hotel' alojamiento.id %}">Ver hotel y reservar</a>
+                                <a class="button button-primary" href="{% url 'login' %}?next={% url 'detalle_hotel' alojamiento.id %}{% if fechas_validas and desde and hasta %}%3Fdesde={{ desde }}%26hasta={{ hasta }}{% endif %}">Ver hotel y reservar</a>
                             {% endif %}
                         </div>
                     </div>

@@ -27,6 +27,8 @@ from .models import SolicitudPropietario
 from .models import Reserva
 from .models import ServicioAlojamiento
 from .models import ImagenAlojamiento
+from .utils import obtener_fecha_limite_reserva
+
 
 
 def sincronizar_disponibilidad_habitaciones():
@@ -298,21 +300,50 @@ def home(request):
 
         alojamientos = alojamientos.filter(filtro_final).distinct()
 
-    if desde and hasta:
-        try:
-            d_inicio = datetime.strptime(desde, '%Y-%m-%d').date()
-            d_fin = datetime.strptime(hasta, '%Y-%m-%d').date()
-            if d_inicio < d_fin:
-                reservas_ocupadas = Reserva.objects.filter(
-                    fecha_inicio__lt=d_fin,
-                    fecha_finalizacion__gt=d_inicio
-                ).exclude(estado='Cancelada').values_list('id_habitacion_id', flat=True)
+    hoy = timezone.now().date()
+    max_fecha = obtener_fecha_limite_reserva(hoy)
+    fechas_validas = False
+    d_inicio = None
+    d_fin = None
 
-                alojamientos = alojamientos.filter(
-                    Q(habitacion__isnull=True) | ~Q(habitacion__id__in=reservas_ocupadas)
-                ).distinct()
-        except ValueError:
-            pass
+    if desde or hasta:
+        if not (desde and hasta):
+            messages.warning(request, 'Para buscar por disponibilidad debés ingresar tanto la fecha de ingreso como la de salida.')
+        else:
+            formato_valido = True
+            try:
+                d_inicio = datetime.strptime(desde, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'El formato de la fecha de ingreso no es válido.')
+                formato_valido = False
+
+            try:
+                d_fin = datetime.strptime(hasta, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'El formato de la fecha de salida no es válido.')
+                formato_valido = False
+
+            if formato_valido:
+                if d_inicio < hoy:
+                    messages.error(request, 'La fecha de ingreso no puede ser anterior a hoy.')
+                elif d_inicio > max_fecha:
+                    messages.error(request, 'La fecha de ingreso no puede superar 1 año en adelante.')
+                elif d_fin < hoy:
+                    messages.error(request, 'La fecha de salida no puede ser anterior a hoy.')
+                elif d_fin > max_fecha:
+                    messages.error(request, 'La fecha de salida no puede superar 1 año en adelante.')
+                elif d_inicio >= d_fin:
+                    messages.error(request, 'La fecha de salida debe ser posterior a la fecha de ingreso.')
+                else:
+                    fechas_validas = True
+                    reservas_ocupadas = Reserva.objects.filter(
+                        fecha_inicio__lt=d_fin,
+                        fecha_finalizacion__gt=d_inicio
+                    ).exclude(estado='Cancelada').values_list('id_habitacion_id', flat=True)
+
+                    alojamientos = alojamientos.filter(
+                        Q(habitacion__isnull=True) | ~Q(habitacion__id__in=reservas_ocupadas)
+                    ).distinct()
 
     # Preparar datos geográficos de los hoteles filtrados para el mapa de resultados (Leaflet)
     hoteles_mapa = []
@@ -341,11 +372,15 @@ def home(request):
         'destino': destino,
         'desde': desde,
         'hasta': hasta,
+        'fechas_validas': fechas_validas,
+        'min_fecha': hoy.strftime('%Y-%m-%d'),
+        'max_fecha': max_fecha.strftime('%Y-%m-%d'),
         'destinos_sugeridos': destinos_sugeridos,
         'combo_sugerencias_json': json.dumps(combo_sugerencias, ensure_ascii=False),
         'hoteles_mapa_json': json.dumps(hoteles_mapa, ensure_ascii=False),
         'tiene_hoteles_con_mapa': len(hoteles_mapa) > 0,
     })
+
 
 
 @login_required
@@ -729,28 +764,53 @@ def detalleHotel(request, alojamiento_id):
     desde = request.GET.get('desde', '').strip() or request.POST.get('fecha_inicio', '').strip()
     hasta = request.GET.get('hasta', '').strip() or request.POST.get('fecha_finalizacion', '').strip()
 
+    hoy = timezone.now().date()
+    max_fecha = obtener_fecha_limite_reserva(hoy)
+
     # Calcular disponibilidad de habitaciones para el rango de fechas dado
     fechas_validas = False
     d_inicio = None
     d_fin = None
     ids_ocupadas_por_reserva = set()
 
-    if desde and hasta:
-        try:
-            d_inicio = datetime.strptime(desde, '%Y-%m-%d').date()
-            d_fin = datetime.strptime(hasta, '%Y-%m-%d').date()
-            if d_inicio < d_fin:
-                fechas_validas = True
-                # IDs de habitaciones con reservas solapadas (no canceladas)
-                ids_ocupadas_por_reserva = set(
-                    Reserva.objects.filter(
-                        id_alohamiento=alojamiento,
-                        fecha_inicio__lt=d_fin,
-                        fecha_finalizacion__gt=d_inicio
-                    ).exclude(estado='Cancelada').values_list('id_habitacion_id', flat=True)
-                )
-        except ValueError:
-            pass
+    if desde or hasta:
+        if not (desde and hasta):
+            messages.warning(request, 'Para consultar disponibilidad debés ingresar tanto la fecha de ingreso como la de salida.')
+        else:
+            formato_valido = True
+            try:
+                d_inicio = datetime.strptime(desde, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'El formato de la fecha de ingreso no es válido.')
+                formato_valido = False
+
+            try:
+                d_fin = datetime.strptime(hasta, '%Y-%m-%d').date()
+            except ValueError:
+                messages.error(request, 'El formato de la fecha de salida no es válido.')
+                formato_valido = False
+
+            if formato_valido:
+                if d_inicio < hoy:
+                    messages.error(request, 'La fecha de ingreso no puede ser anterior a hoy.')
+                elif d_inicio > max_fecha:
+                    messages.error(request, 'La fecha de ingreso no puede superar 1 año en adelante.')
+                elif d_fin < hoy:
+                    messages.error(request, 'La fecha de salida no puede ser anterior a hoy.')
+                elif d_fin > max_fecha:
+                    messages.error(request, 'La fecha de salida no puede superar 1 año en adelante.')
+                elif d_inicio >= d_fin:
+                    messages.error(request, 'La fecha de salida debe ser posterior a la fecha de ingreso.')
+                else:
+                    fechas_validas = True
+                    # IDs de habitaciones con reservas solapadas (no canceladas)
+                    ids_ocupadas_por_reserva = set(
+                        Reserva.objects.filter(
+                            id_alohamiento=alojamiento,
+                            fecha_inicio__lt=d_fin,
+                            fecha_finalizacion__gt=d_inicio
+                        ).exclude(estado='Cancelada').values_list('id_habitacion_id', flat=True)
+                    )
 
     # Anotar cada habitación con su estado para las fechas pedidas
     habitaciones_con_estado = []
@@ -813,18 +873,16 @@ def detalleHotel(request, alojamiento_id):
 
                 messages.success(request, f'¡Reserva confirmada en {alojamiento.nombre} para la habitacion {habitacion.numero_habitacion}! Total abonado: ${pago}.')
                 return redirect('mis_reservas')
+        else:
+            for field, err_list in form.errors.items():
+                for err in err_list:
+                    messages.error(request, err)
     else:
         initial_data = {}
-        if desde:
-            try:
-                initial_data['fecha_inicio'] = datetime.strptime(desde, '%Y-%m-%d').date()
-            except ValueError:
-                pass
-        if hasta:
-            try:
-                initial_data['fecha_finalizacion'] = datetime.strptime(hasta, '%Y-%m-%d').date()
-            except ValueError:
-                pass
+        if desde and fechas_validas and d_inicio:
+            initial_data['fecha_inicio'] = d_inicio
+        if hasta and fechas_validas and d_fin:
+            initial_data['fecha_finalizacion'] = d_fin
 
         form = ReservaForm(initial=initial_data)
         form.fields['id_habitacion'].queryset = habitaciones_disponibles_qs
@@ -839,10 +897,13 @@ def detalleHotel(request, alojamiento_id):
         'fechas_validas': fechas_validas,
         'd_inicio': d_inicio,
         'd_fin': d_fin,
+        'min_fecha': hoy.strftime('%Y-%m-%d'),
+        'max_fecha': max_fecha.strftime('%Y-%m-%d'),
         'img_principal': alojamiento.imagenes.filter(es_principal=True).first(),
         'imgs_galeria': alojamiento.imagenes.filter(es_principal=False).order_by('orden'),
         'servicios': alojamiento.servicios.all().order_by('orden'),
     })
+
 
 
 @login_required

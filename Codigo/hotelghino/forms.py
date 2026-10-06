@@ -407,10 +407,14 @@ class SolicitudPropietarioForm(forms.ModelForm):
         }
 
 
+from .utils import obtener_fecha_limite_reserva
+
+
 class ReservaForm(forms.ModelForm):
     """
     Formulario de reserva de habitación.
-    Verifica coherencia de fechas: ingreso no anterior a hoy y salida posterior a ingreso.
+    Verifica coherencia de fechas: ingreso no anterior a hoy, fechas limitadas
+    a 1 año en adelante y salida posterior a ingreso.
     """
     fecha_inicio = forms.DateField(
         label='Fecha de ingreso',
@@ -428,16 +432,42 @@ class ReservaForm(forms.ModelForm):
             'id_habitacion': 'Habitacion',
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        hoy = timezone.now().date()
+        max_fecha = obtener_fecha_limite_reserva(hoy)
+        self.fields['fecha_inicio'].widget.attrs.update({
+            'min': hoy.strftime('%Y-%m-%d'),
+            'max': max_fecha.strftime('%Y-%m-%d'),
+        })
+        self.fields['fecha_finalizacion'].widget.attrs.update({
+            'min': hoy.strftime('%Y-%m-%d'),
+            'max': max_fecha.strftime('%Y-%m-%d'),
+        })
+
     def clean(self):
         cleaned_data = super().clean()
         fecha_inicio = cleaned_data.get('fecha_inicio')
         fecha_finalizacion = cleaned_data.get('fecha_finalizacion')
 
+        hoy = timezone.now().date()
+        max_fecha = obtener_fecha_limite_reserva(hoy)
+
+        if fecha_inicio:
+            if fecha_inicio < hoy:
+                self.add_error('fecha_inicio', 'La fecha de ingreso no puede ser anterior a hoy.')
+            elif fecha_inicio > max_fecha:
+                self.add_error('fecha_inicio', 'La fecha de ingreso no puede superar 1 año en adelante.')
+
+        if fecha_finalizacion:
+            if fecha_finalizacion < hoy:
+                self.add_error('fecha_finalizacion', 'La fecha de salida no puede ser anterior a hoy.')
+            elif fecha_finalizacion > max_fecha:
+                self.add_error('fecha_finalizacion', 'La fecha de salida no puede superar 1 año en adelante.')
+
         if fecha_inicio and fecha_finalizacion:
             if fecha_inicio >= fecha_finalizacion:
                 self.add_error('fecha_finalizacion', 'La fecha de salida debe ser posterior a la fecha de ingreso.')
 
-            if fecha_inicio < timezone.now().date():
-                self.add_error('fecha_inicio', 'La fecha de ingreso no puede ser anterior a hoy.')
-
         return cleaned_data
+

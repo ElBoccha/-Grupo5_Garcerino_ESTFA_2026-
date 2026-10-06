@@ -134,6 +134,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'hotelghino.context_processors.admin_pending_hotels',
                 'hotelghino.context_processors.carto_context',
+                'hotelghino.context_processors.date_limits',
             ],
         },
     },

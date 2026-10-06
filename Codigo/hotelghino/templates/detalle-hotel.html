@@ -102,14 +102,14 @@
                         <p>Seleccioná tus fechas de estadía para ver qué habitaciones podés reservar.</p>
                     </div>
                 </div>
-                <form method="get" action="{% url 'detalle_hotel' alojamiento.id %}" class="search-panel" style="margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+                <form id="form-consultar-disponibilidad" method="get" action="{% url 'detalle_hotel' alojamiento.id %}" class="search-panel" style="margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
                     <label>
                         Fecha de ingreso
-                        <input type="date" name="desde" value="{{ desde }}" required min="{% now 'Y-m-d' %}">
+                        <input type="date" id="detalle-desde" name="desde" value="{{ desde }}" required min="{{ min_fecha }}" max="{{ max_fecha }}">
                     </label>
                     <label>
                         Fecha de salida
-                        <input type="date" name="hasta" value="{{ hasta }}" required min="{% now 'Y-m-d' %}">
+                        <input type="date" id="detalle-hasta" name="hasta" value="{{ hasta }}" required min="{{ min_fecha }}" max="{{ max_fecha }}">
                     </label>
                     <button type="submit" class="button button-accent" style="align-self: flex-end;">Ver disponibilidad</button>
                 </form>
@@ -212,6 +212,8 @@
                             name="fecha_inicio"
                             id="{{ form.fecha_inicio.id_for_label }}"
                             value="{{ desde }}"
+                            min="{{ min_fecha }}"
+                            max="{{ max_fecha }}"
                             readonly
                             required
                         >
@@ -227,6 +229,8 @@
                             name="fecha_finalizacion"
                             id="{{ form.fecha_finalizacion.id_for_label }}"
                             value="{{ hasta }}"
+                            min="{{ min_fecha }}"
+                            max="{{ max_fecha }}"
                             readonly
                             required
                         >

@@ -600,6 +600,160 @@ class GeolocationLeafletTests(TestCase):
             if os.path.exists(test_file_path):
                 os.remove(test_file_path)
 
+class FechasReservaValidationTest(TestCase):
+    """
+    Tests de validacion de fechas para busqueda en home y reservas:
+    - No se puede usar fecha de ingreso anterior a hoy
+    - No se puede usar fecha de salida anterior o igual a fecha de ingreso
+    - No se puede usar fecha mas de 1 año en adelante
+    - La busqueda con fechas validas funciona correctamente
+    """
 
+    def setUp(self):
+        from hotelghino.models import Alojamiento, Habitacion
+        self.propietario = Usuario.objects.create_user(
+            username='prop_fechas',
+            password='Pass12345',
+            dni=55555555,
+            telefono='555555555',
+            rol='P'
+        )
+        self.huesped = Usuario.objects.create_user(
+            username='huesped_fechas',
+            password='Pass12345',
+            dni=66666666,
+            telefono='666666666',
+            rol='H'
+        )
+        self.hotel = Alojamiento.objects.create(
+            nombre='Hotel Fechas Test',
+            calle='Test',
+            numero_calle='1',
+            descripcion='Hotel de prueba para fechas',
+            id_usuario=self.propietario,
+            estado='A'
+        )
+        self.hab = Habitacion.objects.create(
+            numero_habitacion=1,
+            numero_piso=1,
+            capacidad_maxima=2,
+            tipo='Simple',
+            precio_noche=1000,
+            id_alohamiento=self.hotel,
+            id_usuario=self.propietario
+        )
 
+    def test_reserva_con_fecha_pasada_es_rechazada(self):
+        """No se puede reservar con fecha de ingreso en el pasado."""
+        from datetime import date, timedelta
+        self.client.force_login(self.huesped)
+        hoy = date.today()
+        d_pasado = hoy - timedelta(days=1)
+        d_fin = hoy + timedelta(days=2)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab.id,
+            'fecha_inicio': d_pasado.strftime('%Y-%m-%d'),
+            'fecha_finalizacion': d_fin.strftime('%Y-%m-%d'),
+        })
+        # No debe redirigir (la reserva no se crea)
+        self.assertEqual(response.status_code, 200)
+        from hotelghino.models import Reserva
+        self.assertFalse(Reserva.objects.filter(id_usuario=self.huesped).exists())
+
+    def test_reserva_con_checkout_antes_que_checkin_es_rechazada(self):
+        """No se puede reservar con fecha de salida anterior o igual a la de ingreso."""
+        from datetime import date, timedelta
+        self.client.force_login(self.huesped)
+        hoy = date.today()
+        d_inicio = hoy + timedelta(days=5)
+        d_fin = hoy + timedelta(days=3)  # salida ANTES que ingreso
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab.id,
+            'fecha_inicio': d_inicio.strftime('%Y-%m-%d'),
+            'fecha_finalizacion': d_fin.strftime('%Y-%m-%d'),
+        })
+        self.assertEqual(response.status_code, 200)
+        from hotelghino.models import Reserva
+        self.assertFalse(Reserva.objects.filter(id_usuario=self.huesped).exists())
+
+    def test_reserva_mas_de_un_anio_en_adelante_es_rechazada(self):
+        """No se puede reservar con fechas mas de 1 año en adelante."""
+        from datetime import date, timedelta
+        from hotelghino.utils import obtener_fecha_limite_reserva
+        self.client.force_login(self.huesped)
+        hoy = date.today()
+        max_fecha = obtener_fecha_limite_reserva(hoy)
+        d_muy_lejos = max_fecha + timedelta(days=5)
+        d_fin = d_muy_lejos + timedelta(days=2)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab.id,
+            'fecha_inicio': d_muy_lejos.strftime('%Y-%m-%d'),
+            'fecha_finalizacion': d_fin.strftime('%Y-%m-%d'),
+        })
+        self.assertEqual(response.status_code, 200)
+        from hotelghino.models import Reserva
+        self.assertFalse(Reserva.objects.filter(id_usuario=self.huesped).exists())
+
+    def test_busqueda_home_con_fechas_validas_filtra_correctamente(self):
+        """La busqueda por fechas en home funciona con fechas validas."""
+        from datetime import date, timedelta
+        self.client.force_login(self.huesped)
+        hoy = date.today()
+        d_inicio = hoy + timedelta(days=2)
+        d_fin = hoy + timedelta(days=5)
+        response = self.client.get(reverse('home'), {
+            'desde': d_inicio.strftime('%Y-%m-%d'),
+            'hasta': d_fin.strftime('%Y-%m-%d'),
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hotel Fechas Test')
+
+    def test_busqueda_home_con_fecha_inicio_posterior_a_fin_no_filtra(self):
+        """La busqueda con fecha_inicio >= fecha_fin no filtra por disponibilidad."""
+        from datetime import date, timedelta
+        self.client.force_login(self.huesped)
+        hoy = date.today()
+        d_inicio = hoy + timedelta(days=10)
+        d_fin = hoy + timedelta(days=5)  # fin antes que inicio
+        response = self.client.get(reverse('home'), {
+            'desde': d_inicio.strftime('%Y-%m-%d'),
+            'hasta': d_fin.strftime('%Y-%m-%d'),
+        })
+        self.assertEqual(response.status_code, 200)
+        # Debe mostrar el hotel igual (no filtro invalido) pero con mensaje de error
+        self.assertContains(response, 'Hotel Fechas Test')
+
+    def test_limite_1_anio_en_utils(self):
+        """La funcion obtener_fecha_limite_reserva retorna exactamente 1 anio."""
+        from datetime import date
+        from hotelghino.utils import obtener_fecha_limite_reserva
+        base = date(2026, 3, 15)
+        resultado = obtener_fecha_limite_reserva(base)
+        self.assertEqual(resultado, date(2027, 3, 15))
+
+    def test_limite_1_anio_anio_bisiesto(self):
+        """Con fecha base 29/02 de bisiesto retorna 28/02 del siguiente anio normal."""
+        from datetime import date
+        from hotelghino.utils import obtener_fecha_limite_reserva
+        base = date(2024, 2, 29)
+        resultado = obtener_fecha_limite_reserva(base)
+        self.assertEqual(resultado, date(2025, 2, 28))
+
+    def test_reserva_en_limite_exacto_es_aceptada(self):
+        """Se puede reservar hasta exactamente 1 año en adelante."""
+        from datetime import date, timedelta
+        from hotelghino.utils import obtener_fecha_limite_reserva
+        self.client.force_login(self.huesped)
+        hoy = date.today()
+        max_fecha = obtener_fecha_limite_reserva(hoy)
+        d_inicio = max_fecha - timedelta(days=2)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab.id,
+            'fecha_inicio': d_inicio.strftime('%Y-%m-%d'),
+            'fecha_finalizacion': max_fecha.strftime('%Y-%m-%d'),
+        })
+        # Debe redirigir a mis_reservas (reserva exitosa)
+        self.assertRedirects(response, reverse('mis_reservas'))
+        from hotelghino.models import Reserva
+        self.assertTrue(Reserva.objects.filter(id_usuario=self.huesped).exists())
 
