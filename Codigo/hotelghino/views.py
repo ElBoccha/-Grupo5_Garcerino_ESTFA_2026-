@@ -3,6 +3,7 @@ import re
 from datetime import datetime, date
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import update_session_auth_hash, get_user_model
 from django.contrib.auth.decorators import login_required
@@ -64,10 +65,16 @@ def registro(request):
                     'Cuenta creada exitosamente. Te enviamos un email de verificación a tu correo para activar tu cuenta antes de iniciar sesión.'
                 )
             else:
-                messages.warning(
-                    request,
-                    'Tu cuenta fue creada pero no se pudo enviar el correo de verificación automáticamente. Podés solicitar un nuevo envío desde la opción de reenvío.'
-                )
+                if settings.DEBUG and err:
+                    messages.warning(
+                        request,
+                        f'Tu cuenta fue creada pero no se pudo enviar el correo de verificación. Detalle: {err}'
+                    )
+                else:
+                    messages.warning(
+                        request,
+                        'Tu cuenta fue creada pero no se pudo enviar el correo de verificación automáticamente. Podés solicitar un nuevo envío desde la opción de reenvío.'
+                    )
             return redirect('login')
     else:
         form = RegistroUsuario()
@@ -129,9 +136,19 @@ def reenviar_verificacion(request):
             error = 'Por favor ingresá un correo electrónico.'
         else:
             usuarios = Usuario.objects.filter(email__iexact=email, email_verificado=False, is_active=True)
+            alguna_falla = False
+            detalle_falla = None
             for usuario in usuarios:
-                enviar_email_verificacion(request, usuario)
-            enviado = True
+                ok, err = enviar_email_verificacion(request, usuario)
+                if not ok:
+                    alguna_falla = True
+                    detalle_falla = err
+
+            if alguna_falla and settings.DEBUG and detalle_falla:
+                error = f"Ocurrió un problema al enviar el correo: {detalle_falla}"
+            else:
+                # Mensaje genérico de éxito sin revelar si la cuenta existe
+                enviado = True
 
     return render(request, 'reenviar_verificacion.html', {
         'enviado': enviado,
@@ -144,7 +161,7 @@ def recuperar_contrasena(request):
     """
     Vista custom de recuperacion de contraseña.
     - Si hay SMTP configurado, envia el correo real via Brevo SMTP.
-    - Si no hay SMTP (desarrollo local), renderiza el enlace de reset directamente en pantalla.
+    - Si no hay SMTP (desarrollo local sin credenciales), renderiza el enlace de reset directamente en pantalla.
     """
     Usuario = get_user_model()
     reset_link = None
@@ -158,12 +175,12 @@ def recuperar_contrasena(request):
         else:
             usuarios = Usuario.objects.filter(email__iexact=email, is_active=True)
             if usuarios.exists():
+                from .emails import diagnosticar_error_smtp
                 for usuario in usuarios:
                     uid = urlsafe_base64_encode(force_bytes(usuario.pk))
                     token = default_token_generator.make_token(usuario)
-                    protocol = 'https' if request.is_secure() else 'http'
-                    domain = request.get_host()
-                    reset_url = f"{protocol}://{domain}/recuperar-contrasena/restablecer/{uid}/{token}/"
+                    path = reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+                    reset_url = request.build_absolute_uri(path)
 
                     smtp_configurado = (
                         settings.EMAIL_BACKEND
@@ -180,8 +197,8 @@ def recuperar_contrasena(request):
                                 'user': usuario,
                                 'uid': uid,
                                 'token': token,
-                                'protocol': protocol,
-                                'domain': domain,
+                                'protocol': 'https' if request.is_secure() else 'http',
+                                'domain': request.get_host(),
                             })
                             send_mail(
                                 subject='Restablecer tu contraseña - Hotelghino',
@@ -193,7 +210,8 @@ def recuperar_contrasena(request):
                             )
                             enviado = True
                         except Exception as e:
-                            error = f'Error al enviar el correo: {e}. Revisá la configuración de Brevo SMTP.'
+                            diag = diagnosticar_error_smtp(str(e))
+                            error = f'Error al enviar el correo: {diag or e}.'
                     else:
                         # Sin SMTP: mostrar el enlace en pantalla (modo desarrollo)
                         reset_link = reset_url

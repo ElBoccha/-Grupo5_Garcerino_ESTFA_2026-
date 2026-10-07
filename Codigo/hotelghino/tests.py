@@ -965,3 +965,54 @@ class EmailVerificationBrevoTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(Usuario.objects.filter(username='usuario_nuevo_duplicado').exists())
 
+    def test_registro_si_falla_envio_cuenta_queda_creada_y_permite_reenvio(self):
+        from unittest.mock import patch
+        with patch('hotelghino.views.enviar_email_verificacion', return_value=(False, 'Fallo simulado')):
+            response = self.client.post(reverse('registro'), {
+                'username': 'usuario_falla_envio',
+                'email': 'falla@example.com',
+                'dni': 99887766,
+                'telefono': '1122334455',
+                'password1': 'ClaveFuerte1234!',
+                'password2': 'ClaveFuerte1234!',
+            })
+
+            # La cuenta queda creada
+            self.assertTrue(Usuario.objects.filter(username='usuario_falla_envio').exists())
+            user = Usuario.objects.get(username='usuario_falla_envio')
+            self.assertFalse(user.email_verificado)
+            self.assertRedirects(response, reverse('login'))
+
+            # Y puede solicitar el reenvío posteriormente
+            reenvio_response = self.client.post(reverse('reenviar_verificacion'), {
+                'email': 'falla@example.com'
+            })
+            self.assertEqual(reenvio_response.status_code, 200)
+
+    def test_token_expirado_es_rechazado(self):
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from hotelghino.emails import email_verification_token_generator
+        from django.test import override_settings
+
+        user = Usuario.objects.create_user(
+            username='carlos_expirado',
+            email='expirado@example.com',
+            password='ClaveSegura123!',
+            dni=44335566,
+            telefono='1144332211',
+            email_verificado=False
+        )
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = email_verification_token_generator.make_token(user)
+
+        # Con PASSWORD_RESET_TIMEOUT negativo, el token expira de inmediato
+        with override_settings(PASSWORD_RESET_TIMEOUT=-1):
+            verify_url = reverse('verificar_email', kwargs={'uidb64': uid, 'token': token})
+            response = self.client.get(verify_url)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, 'Enlace no válido')
+            user.refresh_from_db()
+            self.assertFalse(user.email_verificado)
+
