@@ -22,6 +22,11 @@ class Usuario(AbstractUser):
         choices=ROLES,
         default='H'
     )
+    email_verificado = models.BooleanField(
+        default=False,
+        verbose_name='Email verificado',
+        help_text='Indica si el usuario ha verificado su dirección de correo electrónico.'
+    )
     
     REQUIRED_FIELDS = ['dni', 'telefono']
 

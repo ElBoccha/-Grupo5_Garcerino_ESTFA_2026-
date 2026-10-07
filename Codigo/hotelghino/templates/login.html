@@ -80,10 +80,19 @@
             </div>
 
             {% if error %}
-                <p class="form-error form-error-box">
+                <div class="form-error form-error-box">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-                    <span>{{ error }}</span>
-                </p>
+                    <div>
+                        <span>{{ error }}</span>
+                        {% if mostrar_reenviar_verificacion %}
+                            <div style="margin-top: 8px;">
+                                <a href="{% url 'reenviar_verificacion' %}{% if email_para_reenvio %}?email={{ email_para_reenvio }}{% endif %}" style="color: inherit; text-decoration: underline; font-weight: 600;">
+                                    Reenviar email de verificación &rarr;
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             {% endif %}
 
             <button class="button button-primary button-full" id="btn-login" type="submit">Iniciar sesión</button>

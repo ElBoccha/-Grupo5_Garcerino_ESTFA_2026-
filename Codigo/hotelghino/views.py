@@ -7,13 +7,14 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import update_session_auth_hash, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.utils import timezone
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from .emails import enviar_email_verificacion, email_verification_token_generator
 from .forms import RegistroUsuario
 from .forms import ModificarUsuarioForm
 from .forms import RegistroAlojamiento
@@ -52,8 +53,21 @@ def registro(request):
         form = RegistroUsuario(request.POST)
 
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Usuario registrado correctamente. Ya podes iniciar sesion.')
+            usuario = form.save(commit=False)
+            usuario.email_verificado = False
+            usuario.save()
+
+            enviado, err = enviar_email_verificacion(request, usuario)
+            if enviado:
+                messages.success(
+                    request,
+                    'Cuenta creada exitosamente. Te enviamos un email de verificación a tu correo para activar tu cuenta antes de iniciar sesión.'
+                )
+            else:
+                messages.warning(
+                    request,
+                    'Tu cuenta fue creada pero no se pudo enviar el correo de verificación automáticamente. Podés solicitar un nuevo envío desde la opción de reenvío.'
+                )
             return redirect('login')
     else:
         form = RegistroUsuario()
@@ -61,10 +75,75 @@ def registro(request):
     return render(request, 'registro.html', {'form': form})
 
 
+def verificar_email(request, uidb64, token):
+    """
+    Verifica el token de activación recibido en el enlace por email.
+    Si es válido, marca email_verificado=True y permite el inicio de sesión.
+    """
+    Usuario = get_user_model()
+    user = None
+
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = Usuario.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, Usuario.DoesNotExist):
+        user = None
+
+    if user is None:
+        return render(request, 'verificar_email.html', {'estado': 'invalido'})
+
+    if user.email_verificado:
+        return render(request, 'verificar_email.html', {
+            'estado': 'ya_verificado',
+            'user': user,
+        })
+
+    if email_verification_token_generator.check_token(user, token):
+        user.email_verificado = True
+        user.save(update_fields=['email_verificado'])
+        return render(request, 'verificar_email.html', {
+            'estado': 'exitoso',
+            'user': user,
+        })
+    else:
+        return render(request, 'verificar_email.html', {
+            'estado': 'expirado',
+            'user': user,
+        })
+
+
+def reenviar_verificacion(request):
+    """
+    Permite solicitar un nuevo correo de verificación.
+    Por privacidad y seguridad, muestra un mensaje genérico sin revelar la existencia de la cuenta.
+    """
+    Usuario = get_user_model()
+    enviado = False
+    error = None
+    email_ingresado = request.GET.get('email', '').strip()
+
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        email_ingresado = email
+        if not email:
+            error = 'Por favor ingresá un correo electrónico.'
+        else:
+            usuarios = Usuario.objects.filter(email__iexact=email, email_verificado=False, is_active=True)
+            for usuario in usuarios:
+                enviar_email_verificacion(request, usuario)
+            enviado = True
+
+    return render(request, 'reenviar_verificacion.html', {
+        'enviado': enviado,
+        'error': error,
+        'email_ingresado': email_ingresado,
+    })
+
+
 def recuperar_contrasena(request):
     """
     Vista custom de recuperacion de contraseña.
-    - Si hay SMTP configurado (EMAIL_HOST_USER definido), envia el correo real.
+    - Si hay SMTP configurado, envia el correo real via Brevo SMTP.
     - Si no hay SMTP (desarrollo local), renderiza el enlace de reset directamente en pantalla.
     """
     Usuario = get_user_model()
@@ -95,7 +174,7 @@ def recuperar_contrasena(request):
                     )
 
                     if smtp_configurado:
-                        # Enviar correo real via Resend (anymail backend)
+                        # Enviar correo real via Brevo SMTP
                         try:
                             html_message = render_to_string('password_reset_email.html', {
                                 'user': usuario,
@@ -114,7 +193,7 @@ def recuperar_contrasena(request):
                             )
                             enviado = True
                         except Exception as e:
-                            error = f'Error al enviar el correo: {e}. Revisá la configuración de Resend.'
+                            error = f'Error al enviar el correo: {e}. Revisá la configuración de Brevo SMTP.'
                     else:
                         # Sin SMTP: mostrar el enlace en pantalla (modo desarrollo)
                         reset_link = reset_url
@@ -142,6 +221,13 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
+            if not user.email_verificado and not user.is_superuser:
+                return render(request, 'login.html', {
+                    'error': 'Debés verificar tu email antes de iniciar sesión. Revisá tu bandeja de entrada.',
+                    'mostrar_reenviar_verificacion': True,
+                    'email_para_reenvio': user.email,
+                })
+
             login(request, user)
             next_url = request.POST.get('next') or request.GET.get('next')
             if next_url:

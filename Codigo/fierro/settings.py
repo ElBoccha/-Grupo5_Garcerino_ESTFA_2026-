@@ -102,7 +102,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'hotelghino',
-    'anymail',
 ]
 
 MIDDLEWARE = [
@@ -233,27 +232,32 @@ LOGOUT_REDIRECT_URL = 'login'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ---------------------------------------------------------------------------
-# Configuración de Email via Resend (API HTTPS — sin SMTP)
+# Configuración de Email via Brevo SMTP
 # ---------------------------------------------------------------------------
-# En desarrollo (DEBUG=True): los emails se imprimen en la consola.
-# En producción (DEBUG=False): se envían via la API de Resend usando anymail.
-# La API key NUNCA debe estar en el código; se lee de la variable de entorno
-# RESEND_API_KEY configurada en Render (o en el entorno local si se desea).
+# En producción (DEBUG=False): se envían correos vía Brevo utilizando SMTP.
+# En desarrollo (DEBUG=True): si las credenciales de Brevo están configuradas,
+# se utiliza el SMTP de Brevo para pruebas reales; de lo contrario, se usa
+# console.EmailBackend para que el proyecto no falle localmente.
 # ---------------------------------------------------------------------------
 
-if DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+BREVO_SMTP_HOST = os.environ.get('BREVO_SMTP_HOST', 'smtp-relay.brevo.com')
+BREVO_SMTP_PORT = int(os.environ.get('BREVO_SMTP_PORT', '587'))
+BREVO_SMTP_USERNAME = os.environ.get('BREVO_SMTP_USERNAME') or os.environ.get('EMAIL_HOST_USER', '')
+BREVO_SMTP_PASSWORD = os.environ.get('BREVO_SMTP_PASSWORD') or os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+if not DEBUG or BREVO_SMTP_USERNAME:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 else:
-    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-ANYMAIL = {
-    # La clave se obtiene exclusivamente de la variable de entorno.
-    # Nunca hardcodees la API key aquí.
-    'RESEND_API_KEY': os.environ.get('RESEND_API_KEY', ''),
-}
+EMAIL_HOST = BREVO_SMTP_HOST
+EMAIL_PORT = BREVO_SMTP_PORT
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
+EMAIL_HOST_USER = BREVO_SMTP_USERNAME
+EMAIL_HOST_PASSWORD = BREVO_SMTP_PASSWORD
 
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL',
-    'onboarding@resend.dev',  # remitente temporal hasta verificar dominio
+    'no-reply@hotelghino.com'
 )
 

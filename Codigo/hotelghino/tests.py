@@ -271,7 +271,8 @@ class PasswordResetTests(TestCase):
             email='test@hotelghino.com',
             password='ClaveVieja123',
             dni=44556677,
-            telefono='1155443322'
+            telefono='1155443322',
+            email_verificado=True
         )
 
     def test_login_page_contiene_enlace_recuperar_contrasena(self):
@@ -756,4 +757,211 @@ class FechasReservaValidationTest(TestCase):
         self.assertRedirects(response, reverse('mis_reservas'))
         from hotelghino.models import Reserva
         self.assertTrue(Reserva.objects.filter(id_usuario=self.huesped).exists())
+
+
+class EmailVerificationBrevoTests(TestCase):
+    """
+    Tests exhaustivos del sistema de verificación de email y Brevo SMTP:
+    1. Registro genera usuario con email_verificado=False y envía correo con token.
+    2. Login está bloqueado mientras el email no esté verificado.
+    3. Validación del token activa la cuenta (email_verificado=True).
+    4. El token deja de ser válido una vez verificada la cuenta.
+    5. Tokens inválidos o alterados son rechazados de forma amigable.
+    6. Reenvío de email de verificación despacha un nuevo correo para cuentas no verificadas.
+    7. Reenvío para correos inexistentes no revela la existencia de cuentas.
+    8. El campo de email es obligatorio en el formulario de registro.
+    9. No se permiten registros duplicados con el mismo correo electrónico.
+    """
+
+    def test_registro_crea_usuario_no_verificado_y_envia_correo(self):
+        from django.core import mail
+        mail.outbox = []
+
+        response = self.client.post(reverse('registro'), {
+            'username': 'juan_brevo',
+            'email': 'juan@example.com',
+            'dni': 99112233,
+            'telefono': '1122334455',
+            'password1': 'ClaveFuerte1234!',
+            'password2': 'ClaveFuerte1234!',
+        })
+
+        self.assertRedirects(response, reverse('login'))
+        user = Usuario.objects.get(username='juan_brevo')
+        self.assertFalse(user.email_verificado)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('Verificá tu correo electrónico', mail.outbox[0].subject)
+        self.assertIn(user.email, mail.outbox[0].to)
+        self.assertIn('/verificar-email/', mail.outbox[0].body)
+
+    def test_login_bloqueado_si_email_no_esta_verificado(self):
+        user = Usuario.objects.create_user(
+            username='pedro_sin_verificar',
+            email='pedro@example.com',
+            password='ClaveSegura123!',
+            dni=88776655,
+            telefono='1144556677',
+            email_verificado=False
+        )
+
+        response = self.client.post(reverse('login'), {
+            'username': 'pedro_sin_verificar',
+            'password': 'ClaveSegura123!',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Debés verificar tu email antes de iniciar sesión. Revisá tu bandeja de entrada.')
+        self.assertContains(response, reverse('reenviar_verificacion'))
+
+    def test_flujo_completo_verificacion_exitosa(self):
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from hotelghino.emails import email_verification_token_generator
+
+        user = Usuario.objects.create_user(
+            username='maria_verificar',
+            email='maria@example.com',
+            password='ClaveSegura123!',
+            dni=77665544,
+            telefono='1199887766',
+            email_verificado=False
+        )
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = email_verification_token_generator.make_token(user)
+
+        # Acceder al enlace de verificación
+        verify_url = reverse('verificar_email', kwargs={'uidb64': uid, 'token': token})
+        response = self.client.get(verify_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '¡Email verificado!')
+
+        user.refresh_from_db()
+        self.assertTrue(user.email_verificado)
+
+        # Ahora el usuario puede iniciar sesión correctamente
+        login_response = self.client.post(reverse('login'), {
+            'username': 'maria_verificar',
+            'password': 'ClaveSegura123!',
+        })
+        self.assertRedirects(login_response, reverse('home'))
+
+    def test_token_invalido_despues_de_verificar_cuenta(self):
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        from hotelghino.emails import email_verification_token_generator
+
+        user = Usuario.objects.create_user(
+            username='lucas_token',
+            email='lucas@example.com',
+            password='ClaveSegura123!',
+            dni=66554433,
+            telefono='1188776655',
+            email_verificado=False
+        )
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = email_verification_token_generator.make_token(user)
+
+        verify_url = reverse('verificar_email', kwargs={'uidb64': uid, 'token': token})
+        # Primera verificación exitosa
+        self.client.get(verify_url)
+        user.refresh_from_db()
+        self.assertTrue(user.email_verificado)
+
+        # Segundo acceso al mismo enlace
+        response_segunda = self.client.get(verify_url)
+        self.assertEqual(response_segunda.status_code, 200)
+        self.assertContains(response_segunda, 'Cuenta ya verificada')
+
+    def test_token_adulterado_o_invalido_muestra_error_amigable(self):
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+
+        user = Usuario.objects.create_user(
+            username='ana_token_invalido',
+            email='ana@example.com',
+            password='ClaveSegura123!',
+            dni=55443322,
+            telefono='1177665544',
+            email_verificado=False
+        )
+
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        verify_url = reverse('verificar_email', kwargs={'uidb64': uid, 'token': 'token-falso-invalido'})
+        response = self.client.get(verify_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Enlace no válido')
+        self.assertContains(response, reverse('reenviar_verificacion'))
+        user.refresh_from_db()
+        self.assertFalse(user.email_verificado)
+
+    def test_reenviar_verificacion_envia_correo(self):
+        from django.core import mail
+        mail.outbox = []
+
+        user = Usuario.objects.create_user(
+            username='sofia_reenvio',
+            email='sofia@example.com',
+            password='ClaveSegura123!',
+            dni=44332211,
+            telefono='1166554433',
+            email_verificado=False
+        )
+
+        response = self.client.post(reverse('reenviar_verificacion'), {
+            'email': 'sofia@example.com'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Si existe una cuenta asociada a ese email, recibirás un nuevo enlace de verificación.')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('sofia@example.com', mail.outbox[0].to)
+
+    def test_reenviar_verificacion_email_inexistente_no_revela_datos(self):
+        from django.core import mail
+        mail.outbox = []
+
+        response = self.client.post(reverse('reenviar_verificacion'), {
+            'email': 'noexiste@ejemplo.com'
+        })
+        self.assertEqual(response.status_code, 200)
+        # Mensaje idéntico por seguridad
+        self.assertContains(response, 'Si existe una cuenta asociada a ese email, recibirás un nuevo enlace de verificación.')
+        # No se envía ningún correo
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_registro_requiere_email_obligatorio(self):
+        response = self.client.post(reverse('registro'), {
+            'username': 'usuario_sin_email',
+            'email': '',
+            'dni': 33221100,
+            'telefono': '1155443322',
+            'password1': 'ClaveSegura1234!',
+            'password2': 'ClaveSegura1234!',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Usuario.objects.filter(username='usuario_sin_email').exists())
+
+    def test_registro_evita_email_duplicado(self):
+        Usuario.objects.create_user(
+            username='usuario_existente',
+            email='duplicado@example.com',
+            password='ClaveSegura123!',
+            dni=22110099,
+            telefono='1144332211',
+            email_verificado=True
+        )
+
+        response = self.client.post(reverse('registro'), {
+            'username': 'usuario_nuevo_duplicado',
+            'email': 'duplicado@example.com',
+            'dni': 11009988,
+            'telefono': '1133221100',
+            'password1': 'ClaveSegura1234!',
+            'password2': 'ClaveSegura1234!',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Usuario.objects.filter(username='usuario_nuevo_duplicado').exists())
 

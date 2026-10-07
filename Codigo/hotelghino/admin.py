@@ -10,13 +10,13 @@ from .models import Usuario, Alojamiento, Habitacion, Promocion, SolicitudPropie
 
 class UsuarioAdmin(UserAdmin):
     model = Usuario
-    list_display = ('username', 'email', 'rol', 'is_staff', 'is_active')
-    list_filter = ('rol', 'is_staff', 'is_active')
+    list_display = ('username', 'email', 'email_verificado', 'rol', 'is_staff', 'is_active')
+    list_filter = ('email_verificado', 'rol', 'is_staff', 'is_active')
     fieldsets = UserAdmin.fieldsets + (
-        ('Información extra', {'fields': ('dni', 'telefono', 'rol')}),
+        ('Información extra', {'fields': ('dni', 'telefono', 'rol', 'email_verificado')}),
     )
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ('Información extra', {'fields': ('dni', 'telefono', 'rol')}),
+        ('Información extra', {'fields': ('dni', 'telefono', 'rol', 'email_verificado')}),
     )
 
 class SolicitudPropietarioAdmin(admin.ModelAdmin):

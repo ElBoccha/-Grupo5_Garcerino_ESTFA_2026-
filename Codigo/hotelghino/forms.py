@@ -33,6 +33,12 @@ class RegistroUsuario(UserCreationForm):
     """
     Formulario de registro inicial para nuevos usuarios del sistema.
     """
+    email = forms.EmailField(
+        required=True,
+        label='Email',
+        widget=forms.EmailInput(attrs={'autocomplete': 'email', 'placeholder': 'ejemplo@correo.com'})
+    )
+
     class Meta:
         model = Usuario
         fields = [
@@ -49,6 +55,14 @@ class RegistroUsuario(UserCreationForm):
             'dni': 'DNI',
             'telefono': 'Telefono',
         }
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').strip().lower()
+        if not email:
+            raise ValidationError('El correo electrónico es obligatorio.')
+        if Usuario.objects.filter(email__iexact=email).exists():
+            raise ValidationError('Ya existe una cuenta registrada con este correo electrónico.')
+        return email
 
 
 class ModificarUsuarioForm(forms.ModelForm):
@@ -75,6 +89,15 @@ class ModificarUsuarioForm(forms.ModelForm):
             'dni',
             'telefono',
         ]
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '').strip().lower()
+        if not email:
+            raise ValidationError('El correo electrónico es obligatorio.')
+        if self.instance and self.instance.pk:
+            if Usuario.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
+                raise ValidationError('Ya existe otra cuenta registrada con este correo electrónico.')
+        return email
 
     def clean(self):
         cleaned_data = super().clean()

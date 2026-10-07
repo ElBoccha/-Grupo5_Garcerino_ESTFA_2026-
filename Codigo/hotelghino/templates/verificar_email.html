@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Verificación de email - Hotelghino{% endblock %}
+
+{% block content %}
+<main class="auth-layout">
+    <section class="auth-copy">
+        <div class="auth-copy-header">
+            <h1>Tu cuenta segura en Hotelghino</h1>
+            <p>La verificación de correo nos permite mantener la plataforma protegida y tus reservas siempre confirmadas.</p>
+        </div>
+
+        <div class="auth-features">
+            <div class="auth-feature-item">
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <div>
+                    <strong>Identidad confirmada</strong>
+                    <p>Solo vos tenés acceso a tus datos y reservas.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                </div>
+                <div>
+                    <strong>Notificaciones directas</strong>
+                    <p>Recibí confirmaciones inmediatas sobre tus reservas.</p>
+                </div>
+            </div>
+            <div class="auth-feature-item">
+                <div class="auth-feature-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div>
+                    <strong>Plataforma protegida</strong>
+                    <p>Seguridad total tanto para huéspedes como propietarios.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel panel-auth">
+        {% if estado == 'exitoso' %}
+            <div class="panel-header">
+                <h2>¡Email verificado!</h2>
+            </div>
+
+            <div class="inline-alert inline-alert-success" style="margin-bottom: 20px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                <span>Tu correo electrónico ha sido verificado con éxito. Tu cuenta ya está activa.</span>
+            </div>
+
+            <p class="helper-note helper-note-lead">
+                Ya podés iniciar sesión con tus credenciales para comenzar a explorar alojamientos y gestionar tus reservas.
+            </p>
+
+            <a href="{% url 'login' %}" class="button button-primary button-full" id="btn-login-verificado">
+                Iniciar sesión
+            </a>
+
+        {% elif estado == 'ya_verificado' %}
+            <div class="panel-header">
+                <h2>Cuenta ya verificada</h2>
+            </div>
+
+            <div class="inline-alert inline-alert-success" style="margin-bottom: 20px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                <span>Esta cuenta de correo ya se encuentra verificada en Hotelghino.</span>
+            </div>
+
+            <p class="helper-note helper-note-lead">
+                No es necesario volver a confirmar tu email. Podés ingresar normalmente a tu cuenta.
+            </p>
+
+            <a href="{% url 'login' %}" class="button button-primary button-full">
+                Iniciar sesión
+            </a>
+
+        {% else %}
+            {# Token inválido o expirado #}
+            <div class="panel-header">
+                <h2>Enlace no válido</h2>
+            </div>
+
+            <div class="form-error form-error-box" style="margin-bottom: 20px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                <span>El enlace de verificación no es válido, ha expirado o ya fue utilizado.</span>
+            </div>
+
+            <p class="helper-note helper-note-lead">
+                Por seguridad, los enlaces de verificación vencen con el tiempo. Podés solicitar un nuevo correo de activación ingresando tu email.
+            </p>
+
+            <a href="{% url 'reenviar_verificacion' %}" class="button button-primary button-full" id="btn-solicitar-nuevo-email">
+                Solicitar nuevo email de verificación
+            </a>
+
+            <p class="panel-footer" style="margin-top: 16px;">
+                ¿Ya verificaste tu cuenta? <a href="{% url 'login' %}">Iniciá sesión</a>
+            </p>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

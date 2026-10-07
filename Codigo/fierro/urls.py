@@ -25,6 +25,8 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('registro/', views.registro, name='registro'),
+    path('verificar-email/<uidb64>/<token>/', views.verificar_email, name='verificar_email'),
+    path('reenviar-verificacion/', views.reenviar_verificacion, name='reenviar_verificacion'),
     path('recuperar-contrasena/', views.recuperar_contrasena, name='password_reset'),
     path('recuperar-contrasena/enviado/', auth_views.PasswordResetDoneView.as_view(
         template_name='password_reset_done.html'
