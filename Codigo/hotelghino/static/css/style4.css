@@ -456,6 +456,14 @@ label,
     font-weight: 500;
 }
 
+/* Los errores de validación del formulario siempre van en rojo,
+   aunque estén dentro de .form-stack (mayor especificidad que .form-stack ul) */
+.form-stack .errorlist {
+    padding-left: 0;
+    color: var(--red-600);
+    font-weight: 600;
+}
+
 .form-stack .helptext {
     color: var(--muted);
     font-family: var(--font-body);
