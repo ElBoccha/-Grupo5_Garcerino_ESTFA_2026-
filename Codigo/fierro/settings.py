@@ -62,12 +62,9 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env_bool('DEBUG', True)
 
-if 'runserver' in sys.argv:
-    DEBUG = True
-
 ALLOWED_HOSTS = env_list(
     'ALLOWED_HOSTS',
-    'localhost,127.0.0.1,.onrender.com,*',
+    'localhost,127.0.0.1,.onrender.com',
 )
 
 render_host = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
@@ -75,8 +72,11 @@ if render_host and render_host not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append(render_host)
 if '.onrender.com' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('.onrender.com')
-if '*' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append('*')
+
+# En desarrollo local con DEBUG=True se permite wildcard '*' para facilidad de pruebas
+if DEBUG:
+    if '*' not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append('*')
 
 CSRF_TRUSTED_ORIGINS = env_list(
     'CSRF_TRUSTED_ORIGINS',
@@ -88,11 +88,17 @@ if render_host:
         CSRF_TRUSTED_ORIGINS.append(origin)
 
 # Política de Referer para servicios cartográficos (OpenStreetMap, CARTO, Nominatim)
-# Evita que el navegador elimine el header Referer en solicitudes cross-origin
 SECURE_REFERRER_POLICY = os.environ.get('SECURE_REFERRER_POLICY', 'strict-origin-when-cross-origin')
 
 # Detección de HTTPS detrás del proxy reverso de Render
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Configuración de cookies seguras para entorno de producción
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 
 # Application definition
@@ -118,9 +124,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-if HAS_WHITENOISE and not DEBUG:
-    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
 ROOT_URLCONF = 'fierro.urls'
 

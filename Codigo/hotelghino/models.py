@@ -208,20 +208,50 @@ class Alojamiento(models.Model):
         return self.ubicacion or self.pais or "Argentina"
 
     def get_google_maps_url(self):
+        from urllib.parse import quote_plus
         if self.tiene_coordenadas:
             return f"https://www.google.com/maps/dir/?api=1&destination={self.latitud},{self.longitud}"
-        query = f"{self.nombre}, {self.get_direccion_display()}"
-        return f"https://www.google.com/maps/search/?api=1&query={query.replace(' ', '+')}"
+        dir_texto = self.get_direccion_display()
+        query = f"{self.nombre}, {dir_texto}".strip(', ') if dir_texto else self.nombre
+        return f"https://www.google.com/maps/search/?api=1&query={quote_plus(query)}"
+
+    @property
+    def tiene_direccion_suficiente(self):
+        return bool(self.tiene_coordenadas or self.direccion_completa or (self.calle and (self.ciudad or self.ubicacion)) or self.ciudad or self.ubicacion)
 
 
 class Habitacion(models.Model):
     """
     Representa una habitación individual perteneciente a un alojamiento determinado.
     """
+    TIPOS = (
+        ('Individual', 'Individual'),
+        ('Doble', 'Doble'),
+        ('Twin', 'Twin (2 camas individuales)'),
+        ('Triple', 'Triple'),
+        ('Cuadruple', 'Cuádruple'),
+        ('Familiar', 'Familiar'),
+        ('Suite', 'Suite'),
+        ('Dormitorio compartido', 'Dormitorio compartido'),
+        ('Simple', 'Simple'),  # Compatibilidad con registros existentes
+    )
+
     numero_habitacion = models.IntegerField()
     numero_piso = models.IntegerField()
     capacidad_maxima = models.IntegerField()
-    tipo = models.CharField(max_length=20)
+    tipo = models.CharField(max_length=30, choices=TIPOS, default='Doble')
+    camas = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name='Cantidad y tipo de camas',
+        help_text='Ej: 1 cama matrimonial, 2 camas individuales'
+    )
+    descripcion = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Descripción de la habitación'
+    )
     precio_noche = models.IntegerField()
     disponible = models.BooleanField(
         default=True,
@@ -250,6 +280,11 @@ class Reserva(models.Model):
     fecha_inicio = models.DateField()
     fecha_finalizacion = models.DateField()
     estado = models.CharField(max_length=20, default='Confirmada')
+    cantidad_huespedes = models.PositiveSmallIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name='Cantidad de huéspedes'
+    )
     pago = models.IntegerField()
     id_alohamiento = models.ForeignKey(Alojamiento, on_delete=models.CASCADE)
     id_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
@@ -278,6 +313,14 @@ class Reserva(models.Model):
 
         if self.fecha_inicio and self.fecha_finalizacion and self.fecha_inicio >= self.fecha_finalizacion:
             raise ValidationError({'fecha_finalizacion': 'La fecha de salida debe ser posterior a la fecha de ingreso.'})
+
+        if self.id_habitacion_id and self.cantidad_huespedes:
+            try:
+                hab = self.id_habitacion
+                if self.cantidad_huespedes > hab.capacidad_maxima:
+                    raise ValidationError({'cantidad_huespedes': f'La cantidad de huéspedes ({self.cantidad_huespedes}) no puede superar la capacidad máxima de la habitación ({hab.capacidad_maxima} personas).'})
+            except (Habitacion.DoesNotExist, AttributeError):
+                pass
 
     def __str__(self):
         return f"Reserva {self.id} - {self.id_alohamiento.nombre} ({self.id_usuario.username})"

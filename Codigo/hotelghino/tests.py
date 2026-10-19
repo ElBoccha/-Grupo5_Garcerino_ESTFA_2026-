@@ -1016,3 +1016,290 @@ class EmailVerificationBrevoTests(TestCase):
             user.refresh_from_db()
             self.assertFalse(user.email_verificado)
 
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.exceptions import ValidationError
+from datetime import date, timedelta
+from hotelghino.models import Alojamiento, Habitacion, Reserva
+from hotelghino.forms import validar_archivo_imagen
+
+
+class ContrasenasEspecialesTests(TestCase):
+    """
+    Tests de contraseñas con caracteres especiales:
+    - Permite caracteres especiales: !@#$%&*-_ y combinaciones.
+    - El registro, login y cambio de contraseña funcionan con estos caracteres.
+    """
+    def test_registro_y_login_con_caracteres_especiales(self):
+        password_compleja = "P@ssw0rd_!#$*&-2026"
+        response = self.client.post(reverse('registro'), {
+            'username': 'usuario_especial',
+            'email': 'especial@example.com',
+            'dni': 98765432,
+            'telefono': '1122334455',
+            'password1': password_compleja,
+            'password2': password_compleja,
+        })
+        self.assertRedirects(response, reverse('login'))
+        user = Usuario.objects.get(username='usuario_especial')
+        user.email_verificado = True
+        user.save()
+
+        # Login con la contraseña especial
+        login_res = self.client.post(reverse('login'), {
+            'username': 'usuario_especial',
+            'password': password_compleja,
+        })
+        self.assertRedirects(login_res, reverse('home'))
+
+
+class ValidacionImagenesTests(TestCase):
+    """
+    Tests de validación de archivos de imagen por magic bytes:
+    - Rechaza PDFs (incluso con extensión .jpg o .png).
+    - Rechaza archivos de texto plano o ejecutables.
+    - Acepta imágenes válidas (PNG, JPEG, WEBP).
+    """
+    def test_rechaza_archivo_pdf_con_extension_jpg(self):
+        pdf_bytes = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF"
+        pdf_file = SimpleUploadedFile("documento.jpg", pdf_bytes, content_type="image/jpeg")
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_archivo_imagen(pdf_file)
+        self.assertIn("PDF", str(ctx.exception))
+
+    def test_rechaza_archivo_de_texto_como_imagen(self):
+        text_bytes = b"Esto es un texto plano no una imagen"
+        txt_file = SimpleUploadedFile("prueba.png", text_bytes, content_type="image/png")
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_archivo_imagen(txt_file)
+        self.assertIn("no es una imagen", str(ctx.exception))
+
+    def test_acepta_imagen_png_valida(self):
+        png_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        png_file = SimpleUploadedFile("pixel.png", png_bytes, content_type="image/png")
+
+        try:
+            validar_archivo_imagen(png_file)
+        except ValidationError:
+            self.fail("validar_archivo_imagen lanzó ValidationError con un PNG válido.")
+
+
+class DisponibilidadYConcurrenciaReservasTests(TestCase):
+    """
+    Tests de disponibilidad de habitaciones:
+    - Dos reservas en fechas diferentes para la misma habitación: ambas aceptadas.
+    - Dos reservas consecutivas (salida = entrada): sin superposición, ambas aceptadas.
+    - Dos reservas con superposición de fechas para la misma habitación: la segunda es rechazada.
+    - Reservas en habitaciones distintas del mismo hotel: ambas aceptadas aunque se superpongan fechas.
+    - Cancelar una reserva vuelve a liberar la habitación para las mismas fechas.
+    - Control de capacidad máxima de huéspedes.
+    - Cálculo de precio pre-confirmación en la reserva.
+    """
+    def setUp(self):
+        self.propietario = Usuario.objects.create_user(
+            username='prop_test',
+            email='prop@test.com',
+            password='Password123!',
+            dni=12345679,
+            telefono='111222333',
+            rol='P',
+            email_verificado=True
+        )
+        self.huesped1 = Usuario.objects.create_user(
+            username='huesped_1',
+            email='h1@test.com',
+            password='Password123!',
+            dni=87654322,
+            telefono='222333444',
+            rol='H',
+            email_verificado=True
+        )
+        self.huesped2 = Usuario.objects.create_user(
+            username='huesped_2',
+            email='h2@test.com',
+            password='Password123!',
+            dni=87654323,
+            telefono='333444555',
+            rol='H',
+            email_verificado=True
+        )
+        self.hotel = Alojamiento.objects.create(
+            id_usuario=self.propietario,
+            nombre='Hotel Test Disponibilidad',
+            descripcion='Hotel para pruebas unitarias',
+            direccion_completa='Av. San Martín 500, Bariloche',
+            ciudad='Bariloche',
+            provincia='Río Negro',
+            estado='A'
+        )
+        self.hab1 = Habitacion.objects.create(
+            id_alohamiento=self.hotel,
+            id_usuario=self.propietario,
+            numero_habitacion=101,
+            numero_piso=1,
+            capacidad_maxima=2,
+            precio_noche=10000,
+            tipo='Doble',
+            disponible=True
+        )
+        self.hab2 = Habitacion.objects.create(
+            id_alohamiento=self.hotel,
+            id_usuario=self.propietario,
+            numero_habitacion=102,
+            numero_piso=1,
+            capacidad_maxima=4,
+            precio_noche=18000,
+            tipo='Familiar',
+            disponible=True
+        )
+
+    def test_dos_reservas_fechas_diferentes_misma_habitacion_permitidas(self):
+        hoy = date.today()
+        Reserva.objects.create(
+            id_alohamiento=self.hotel,
+            id_habitacion=self.hab1,
+            id_usuario=self.huesped1,
+            fecha_inicio=hoy + timedelta(days=10),
+            fecha_finalizacion=hoy + timedelta(days=15),
+            cantidad_huespedes=2,
+            pago=50000,
+            estado='Confirmada'
+        )
+
+        self.client.force_login(self.huesped2)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab1.id,
+            'fecha_inicio': (hoy + timedelta(days=20)).strftime('%Y-%m-%d'),
+            'fecha_finalizacion': (hoy + timedelta(days=25)).strftime('%Y-%m-%d'),
+            'cantidad_huespedes': 2,
+        })
+        self.assertRedirects(response, reverse('mis_reservas'))
+        self.assertEqual(Reserva.objects.filter(id_habitacion=self.hab1).count(), 2)
+
+    def test_dos_reservas_consecutivas_mismo_dia_salida_llegada_permitidas(self):
+        hoy = date.today()
+        Reserva.objects.create(
+            id_alohamiento=self.hotel,
+            id_habitacion=self.hab1,
+            id_usuario=self.huesped1,
+            fecha_inicio=hoy + timedelta(days=10),
+            fecha_finalizacion=hoy + timedelta(days=15),
+            cantidad_huespedes=2,
+            pago=50000,
+            estado='Confirmada'
+        )
+
+        self.client.force_login(self.huesped2)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab1.id,
+            'fecha_inicio': (hoy + timedelta(days=15)).strftime('%Y-%m-%d'),
+            'fecha_finalizacion': (hoy + timedelta(days=20)).strftime('%Y-%m-%d'),
+            'cantidad_huespedes': 1,
+        })
+        self.assertRedirects(response, reverse('mis_reservas'))
+        self.assertEqual(Reserva.objects.filter(id_habitacion=self.hab1).count(), 2)
+
+    def test_reserva_con_superposicion_de_fechas_rechazada(self):
+        hoy = date.today()
+        Reserva.objects.create(
+            id_alohamiento=self.hotel,
+            id_habitacion=self.hab1,
+            id_usuario=self.huesped1,
+            fecha_inicio=hoy + timedelta(days=10),
+            fecha_finalizacion=hoy + timedelta(days=15),
+            cantidad_huespedes=2,
+            pago=50000,
+            estado='Confirmada'
+        )
+
+        self.client.force_login(self.huesped2)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab1.id,
+            'fecha_inicio': (hoy + timedelta(days=12)).strftime('%Y-%m-%d'),
+            'fecha_finalizacion': (hoy + timedelta(days=17)).strftime('%Y-%m-%d'),
+            'cantidad_huespedes': 2,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'no está disponible en esas fechas')
+        self.assertEqual(Reserva.objects.filter(id_habitacion=self.hab1).count(), 1)
+
+    def test_reservas_en_distintas_habitaciones_mismo_hotel_fechas_superpuestas(self):
+        hoy = date.today()
+        Reserva.objects.create(
+            id_alohamiento=self.hotel,
+            id_habitacion=self.hab1,
+            id_usuario=self.huesped1,
+            fecha_inicio=hoy + timedelta(days=10),
+            fecha_finalizacion=hoy + timedelta(days=15),
+            cantidad_huespedes=2,
+            pago=50000,
+            estado='Confirmada'
+        )
+
+        self.client.force_login(self.huesped2)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab2.id,
+            'fecha_inicio': (hoy + timedelta(days=10)).strftime('%Y-%m-%d'),
+            'fecha_finalizacion': (hoy + timedelta(days=15)).strftime('%Y-%m-%d'),
+            'cantidad_huespedes': 3,
+        })
+        self.assertRedirects(response, reverse('mis_reservas'))
+        self.assertEqual(Reserva.objects.filter(id_habitacion=self.hab1).count(), 1)
+        self.assertEqual(Reserva.objects.filter(id_habitacion=self.hab2).count(), 1)
+
+    def test_cancelacion_de_reserva_libera_disponibilidad(self):
+        hoy = date.today()
+        reserva = Reserva.objects.create(
+            id_alohamiento=self.hotel,
+            id_habitacion=self.hab1,
+            id_usuario=self.huesped1,
+            fecha_inicio=hoy + timedelta(days=10),
+            fecha_finalizacion=hoy + timedelta(days=15),
+            cantidad_huespedes=2,
+            pago=50000,
+            estado='Cancelada'
+        )
+
+        self.client.force_login(self.huesped2)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab1.id,
+            'fecha_inicio': (hoy + timedelta(days=10)).strftime('%Y-%m-%d'),
+            'fecha_finalizacion': (hoy + timedelta(days=15)).strftime('%Y-%m-%d'),
+            'cantidad_huespedes': 2,
+        })
+        self.assertRedirects(response, reverse('mis_reservas'))
+        self.assertEqual(Reserva.objects.filter(id_habitacion=self.hab1, estado='Confirmada').count(), 1)
+
+    def test_superar_capacidad_maxima_habitacion_rechazado(self):
+        hoy = date.today()
+        self.client.force_login(self.huesped1)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab1.id,
+            'fecha_inicio': (hoy + timedelta(days=5)).strftime('%Y-%m-%d'),
+            'fecha_finalizacion': (hoy + timedelta(days=8)).strftime('%Y-%m-%d'),
+            'cantidad_huespedes': 3,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'no puede superar la capacidad máxima')
+        self.assertFalse(Reserva.objects.filter(id_habitacion=self.hab1).exists())
+
+    def test_calculo_correcto_precio_total_reserva(self):
+        hoy = date.today()
+        self.client.force_login(self.huesped1)
+        d_inicio = hoy + timedelta(days=5)
+        d_fin = hoy + timedelta(days=9)
+        response = self.client.post(reverse('detalle_hotel', args=[self.hotel.id]), {
+            'id_habitacion': self.hab1.id,
+            'fecha_inicio': d_inicio.strftime('%Y-%m-%d'),
+            'fecha_finalizacion': d_fin.strftime('%Y-%m-%d'),
+            'cantidad_huespedes': 2,
+        })
+        self.assertRedirects(response, reverse('mis_reservas'))
+        reserva = Reserva.objects.get(id_habitacion=self.hab1, id_usuario=self.huesped1)
+        self.assertEqual(reserva.pago, 40000)
+        self.assertEqual(reserva.cantidad_huespedes, 2)
+
+
+

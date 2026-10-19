@@ -65,12 +65,10 @@
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                                 Ubicación y cómo llegar
                             </h3>
-                            {% if alojamiento.tiene_coordenadas %}
                             <a href="{{ alojamiento.get_google_maps_url }}" target="_blank" rel="noopener noreferrer" class="button button-accent" style="font-size: 13px; padding: 7px 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
                                 Cómo llegar
                             </a>
-                            {% endif %}
                         </div>
 
                         <!-- Información detallada de ubicación -->
@@ -86,8 +84,11 @@
                         {% else %}
                             <div style="padding: 24px; border-radius: 12px; border: 1px dashed var(--line); background: #f8fafc; text-align: center; color: var(--muted); font-size: 13.5px;">
                                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" style="margin-bottom: 6px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                <p style="margin: 0 0 8px; color: var(--ink);">La ubicación en el mapa de este alojamiento todavía no fue especificada por su propietario.</p>
-                                <p style="margin: 0; font-size: 13px;">Dirección registrada: <strong>{{ alojamiento.get_direccion_display }}</strong></p>
+                                <p style="margin: 0 0 8px; color: var(--ink);">La ubicación en el mapa de este alojamiento todavía no fue especificada con coordenadas exactas.</p>
+                                <p style="margin: 0 0 12px; font-size: 13px;">Dirección registrada: <strong>{{ alojamiento.get_direccion_display }}</strong></p>
+                                {% if not alojamiento.tiene_direccion_suficiente %}
+                                    <p style="margin: 0; font-size: 12.5px; color: var(--amber-600);">Nota: La dirección registrada no contiene suficientes detalles para ubicar el alojamiento de manera exacta.</p>
+                                {% endif %}
                             </div>
                         {% endif %}
                     </div>
@@ -99,10 +100,10 @@
                 <div class="rooms-heading">
                     <div>
                         <h3>Consultar disponibilidad</h3>
-                        <p>Seleccioná tus fechas de estadía para ver qué habitaciones podés reservar.</p>
+                        <p>Seleccioná tus fechas de estadía y cantidad de huéspedes para ver qué habitaciones podés reservar.</p>
                     </div>
                 </div>
-                <form id="form-consultar-disponibilidad" method="get" action="{% url 'detalle_hotel' alojamiento.id %}" class="search-panel" style="margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+                <form id="form-consultar-disponibilidad" method="get" action="{% url 'detalle_hotel' alojamiento.id %}" class="search-panel" style="margin-top: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
                     <label>
                         Fecha de ingreso
                         <input type="date" id="detalle-desde" name="desde" value="{{ desde }}" required min="{{ min_fecha }}" max="{{ max_fecha }}">
@@ -110,6 +111,10 @@
                     <label>
                         Fecha de salida
                         <input type="date" id="detalle-hasta" name="hasta" value="{{ hasta }}" required min="{{ min_fecha }}" max="{{ max_fecha }}">
+                    </label>
+                    <label>
+                        Huéspedes
+                        <input type="number" id="detalle-huespedes" name="huespedes" value="{{ huespedes_param|default:'1' }}" min="1" max="20">
                     </label>
                     <button type="submit" class="button button-accent" style="align-self: flex-end;">Ver disponibilidad</button>
                 </form>
@@ -121,7 +126,7 @@
                     <div>
                         <h3>Habitaciones</h3>
                         {% if fechas_validas %}
-                            <p>{{ habitaciones|length }} habitaciones — disponibilidad para {{ d_inicio }} al {{ d_fin }}</p>
+                            <p>{{ habitaciones|length }} habitaciones — disponibilidad para {{ d_inicio }} al {{ d_fin }}{% if huespedes_param %} (para {{ huespedes_param }} huésped{{ huespedes_param|pluralize:"es" }}){% endif %}</p>
                         {% else %}
                             <p>{{ habitaciones|length }} habitaciones registradas. Ingresá fechas arriba para consultar disponibilidad.</p>
                         {% endif %}
@@ -137,6 +142,7 @@
                                     <th>Piso</th>
                                     <th>Capacidad</th>
                                     <th>Tipo</th>
+                                    <th>Camas</th>
                                     <th>Precio por noche</th>
                                     <th>Estado</th>
                                 </tr>
@@ -148,6 +154,7 @@
                                         <td>{{ hab.numero_piso }}</td>
                                         <td>{{ hab.capacidad_maxima }} personas</td>
                                         <td>{{ hab.tipo }}</td>
+                                        <td>{{ hab.camas|default:"—" }}</td>
                                         <td><strong>${{ hab.precio_noche }}</strong></td>
                                         <td>
                                             {% if fechas_validas %}
@@ -188,20 +195,42 @@
                     <a href="{{ alojamiento.get_google_maps_url }}" target="_blank" rel="noopener noreferrer" style="font-size: 12.5px; color: var(--blue-600); font-weight: 600; text-decoration: none;">Ver mapa &rarr;</a>
                 </div>
 
-                <form method="post" class="form-stack">
+                <form method="post" class="form-stack" id="form-reserva-hotel">
                     {% csrf_token %}
 
                     <label for="{{ form.id_habitacion.id_for_label }}">
                         {{ form.id_habitacion.label }}
                         <select name="id_habitacion" id="{{ form.id_habitacion.id_for_label }}" required>
                             {% for hab in habitaciones_disponibles %}
-                                <option value="{{ hab.id }}" {% if form.id_habitacion.value|add:0 == hab.id %}selected{% endif %}>
-                                    Habitacion {{ hab.numero_habitacion }} ({{ hab.tipo }}, {{ hab.capacidad_maxima }} pers.) - ${{ hab.precio_noche }}/noche
+                                <option 
+                                    value="{{ hab.id }}" 
+                                    data-precio="{{ hab.precio_noche }}" 
+                                    data-nombre="Habitación {{ hab.numero_habitacion }} ({{ hab.tipo }})" 
+                                    data-capacidad="{{ hab.capacidad_maxima }}"
+                                    {% if form.id_habitacion.value|add:0 == hab.id %}selected{% endif %}
+                                >
+                                    Habitacion {{ hab.numero_habitacion }} ({{ hab.tipo }}, {{ hab.capacidad_maxima }} pers.){% if hab.camas %} &bull; {{ hab.camas }}{% endif %} - ${{ hab.precio_noche }}/noche
                                 </option>
                             {% endfor %}
                         </select>
                         {% if form.id_habitacion.errors %}
                             <span class="form-error">{{ form.id_habitacion.errors.0 }}</span>
+                        {% endif %}
+                    </label>
+
+                    <label for="id_cantidad_huespedes">
+                        Cantidad de huéspedes
+                        <input
+                            type="number"
+                            name="cantidad_huespedes"
+                            id="id_cantidad_huespedes"
+                            value="{{ form.cantidad_huespedes.value|default:huespedes_param|default:'1' }}"
+                            min="1"
+                            max="20"
+                            required
+                        >
+                        {% if form.cantidad_huespedes.errors %}
+                            <span class="form-error">{{ form.cantidad_huespedes.errors.0 }}</span>
                         {% endif %}
                     </label>
 
@@ -247,7 +276,26 @@
                         </div>
                     {% endif %}
 
-                    <button type="submit" class="button button-primary">Confirmar Reserva</button>
+                    <!-- Detalle de precio antes de confirmar -->
+                    <div id="resumen-precio" class="reserva-resumen" style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 16px; margin: 12px 0;">
+                        <h4 style="margin: 0 0 12px; font-size: 15px; color: #166534; display: flex; align-items: center; gap: 8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                            Detalle del precio antes de confirmar
+                        </h4>
+                        <div style="display: grid; gap: 6px; font-size: 13.5px; color: #374151;">
+                            <div style="display: flex; justify-content: space-between;"><span>Alojamiento:</span><strong>{{ alojamiento.nombre }}</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Habitación:</span><strong id="rp-habitacion">—</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Fechas de estadía:</span><strong id="rp-fechas">{{ d_inicio }} al {{ d_fin }}</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Cantidad de noches:</span><strong id="rp-noches">—</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Precio por noche:</span><strong id="rp-precio-noche">—</strong></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Subtotal:</span><strong id="rp-subtotal">—</strong></div>
+                            <hr style="border: none; border-top: 1px solid #86efac; margin: 4px 0;">
+                            <div style="display: flex; justify-content: space-between; font-size: 16px;"><span><strong>Precio total final:</strong></span><strong id="rp-total" style="color: #166534; font-size: 18px;">—</strong></div>
+                        </div>
+                        <p style="margin: 8px 0 0; font-size: 12px; color: #6b7280;">* El cálculo se valida y confirma en el servidor con los valores oficiales de la habitación.</p>
+                    </div>
+
+                    <button type="submit" class="button button-primary" id="btn-confirmar-reserva">Confirmar Reserva</button>
                 </form>
             </article>
         {% elif habitaciones and not fechas_validas %}
@@ -483,4 +531,101 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 {% endif %}
+
+<script>
+(function() {
+    function initResumenPrecio() {
+        var selectHab = document.querySelector('select[name="id_habitacion"]');
+        var inputInicio = document.querySelector('input[name="fecha_inicio"]');
+        var inputFin = document.querySelector('input[name="fecha_finalizacion"]');
+        var inputHuespedes = document.getElementById('id_cantidad_huespedes');
+        var cardResumen = document.getElementById('resumen-precio');
+
+        if (!selectHab || !inputInicio || !inputFin || !cardResumen) return;
+
+        function formatearMoneda(val) {
+            return '$' + Number(val).toLocaleString('es-AR');
+        }
+
+        function formatearFecha(str) {
+            if (!str) return '';
+            var p = str.split('-');
+            if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+            return str;
+        }
+
+        function actualizarCalculo() {
+            var opt = selectHab.options[selectHab.selectedIndex];
+            if (!opt || !opt.value) {
+                cardResumen.style.display = 'none';
+                return;
+            }
+
+            var precioNoche = parseFloat(opt.dataset.precio || 0);
+            var nombreHab = opt.dataset.nombre || opt.text;
+            var capacidad = parseInt(opt.dataset.capacidad || 99, 10);
+            var fInicio = inputInicio.value;
+            var fFin = inputFin.value;
+
+            if (!fInicio || !fFin) {
+                cardResumen.style.display = 'none';
+                return;
+            }
+
+            var d1 = new Date(fInicio + 'T00:00:00');
+            var d2 = new Date(fFin + 'T00:00:00');
+            var diffMs = d2 - d1;
+            var noches = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+            if (isNaN(noches) || noches <= 0) {
+                cardResumen.style.display = 'none';
+                return;
+            }
+
+            var subtotal = noches * precioNoche;
+            var total = subtotal;
+
+            var elHab = document.getElementById('rp-habitacion');
+            var elFechas = document.getElementById('rp-fechas');
+            var elNoches = document.getElementById('rp-noches');
+            var elPrecioNoche = document.getElementById('rp-precio-noche');
+            var elSubtotal = document.getElementById('rp-subtotal');
+            var elTotal = document.getElementById('rp-total');
+
+            if (elHab) elHab.textContent = nombreHab;
+            if (elFechas) elFechas.textContent = formatearFecha(fInicio) + ' al ' + formatearFecha(fFin);
+            if (elNoches) elNoches.textContent = noches + (noches === 1 ? ' noche' : ' noches');
+            if (elPrecioNoche) elPrecioNoche.textContent = formatearMoneda(precioNoche) + ' / noche';
+            if (elSubtotal) elSubtotal.textContent = formatearMoneda(subtotal);
+            if (elTotal) elTotal.textContent = formatearMoneda(total);
+
+            // Validar capacidad de huéspedes si se completó
+            if (inputHuespedes) {
+                var cant = parseInt(inputHuespedes.value || 1, 10);
+                if (cant > capacidad) {
+                    elHab.textContent = nombreHab + ' ⚠️ (Capacidad: ' + capacidad + ' personas, elegiste ' + cant + ')';
+                }
+            }
+
+            cardResumen.style.display = 'block';
+        }
+
+        selectHab.addEventListener('change', actualizarCalculo);
+        inputInicio.addEventListener('change', actualizarCalculo);
+        inputFin.addEventListener('change', actualizarCalculo);
+        if (inputHuespedes) {
+            inputHuespedes.addEventListener('input', actualizarCalculo);
+            inputHuespedes.addEventListener('change', actualizarCalculo);
+        }
+
+        actualizarCalculo();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initResumenPrecio);
+    } else {
+        initResumenPrecio();
+    }
+})();
+</script>
 {% endblock %}

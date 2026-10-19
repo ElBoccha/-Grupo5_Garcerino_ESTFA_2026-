@@ -55,6 +55,10 @@
                 <input type="date" name="hasta" id="campo-hasta" value="{{ hasta }}" min="{{ min_fecha }}" max="{{ max_fecha }}">
             </div>
 
+            <div class="search-field-group search-huespedes-group" style="max-width: 130px;">
+                <label for="campo-huespedes">Huéspedes</label>
+                <input type="number" name="huespedes" id="campo-huespedes" value="{{ huespedes }}" min="1" max="20" placeholder="1">
+            </div>
 
             <button class="button button-accent search-submit-btn" type="submit">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>

@@ -230,6 +230,13 @@
                             {% if lote_form.precio_noche.errors %}<span class="form-error">{{ lote_form.precio_noche.errors.0 }}</span>{% endif %}
                         </label>
                     </div>
+                    <div class="form-row">
+                        <label for="{{ lote_form.camas.id_for_label }}">
+                            {{ lote_form.camas.label }}
+                            {{ lote_form.camas }}
+                            {% if lote_form.camas.errors %}<span class="form-error">{{ lote_form.camas.errors.0 }}</span>{% endif %}
+                        </label>
+                    </div>
                 </div>
             </div>
 

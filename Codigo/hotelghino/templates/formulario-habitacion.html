@@ -117,18 +117,53 @@
                 </label>
             </div>
 
-            <label for="id_tipo_habitacion">
-                Tipo de habitación
-                <select id="id_tipo_habitacion" name="tipo" required>
-                    <option value="">— Elegí un tipo —</option>
-                    <option value="Simple" {% if form.tipo.value == "Simple" %}selected{% endif %}>Simple</option>
-                    <option value="Doble"  {% if form.tipo.value == "Doble"  %}selected{% endif %}>Doble</option>
-                    <option value="Triple" {% if form.tipo.value == "Triple" %}selected{% endif %}>Triple</option>
-                    <option value="Suite"  {% if form.tipo.value == "Suite"  %}selected{% endif %}>Suite</option>
-                    <option value="Familiar" {% if form.tipo.value == "Familiar" %}selected{% endif %}>Familiar</option>
-                </select>
-                {% if form.tipo.errors %}
-                    <span class="form-error">{{ form.tipo.errors|join:", " }}</span>
+            <div class="form-row">
+                <label for="id_tipo_habitacion">
+                    Tipo de habitación
+                    <select id="id_tipo_habitacion" name="tipo" required>
+                        <option value="">— Elegí un tipo —</option>
+                        <option value="Individual" {% if form.tipo.value == "Individual" %}selected{% endif %}>Individual (1 persona)</option>
+                        <option value="Doble"  {% if form.tipo.value == "Doble"  %}selected{% endif %}>Doble (2 personas)</option>
+                        <option value="Twin" {% if form.tipo.value == "Twin" %}selected{% endif %}>Twin (2 camas individuales)</option>
+                        <option value="Triple" {% if form.tipo.value == "Triple" %}selected{% endif %}>Triple (3 personas)</option>
+                        <option value="Cuadruple" {% if form.tipo.value == "Cuadruple" %}selected{% endif %}>Cuádruple (4 personas)</option>
+                        <option value="Familiar" {% if form.tipo.value == "Familiar" %}selected{% endif %}>Familiar (hasta 6 personas)</option>
+                        <option value="Suite"  {% if form.tipo.value == "Suite"  %}selected{% endif %}>Suite</option>
+                        <option value="Dormitorio compartido" {% if form.tipo.value == "Dormitorio compartido" %}selected{% endif %}>Dormitorio compartido (hostel)</option>
+                        {% if form.tipo.value == "Simple" %}
+                            <option value="Simple" selected>Simple (histórico)</option>
+                        {% endif %}
+                    </select>
+                    {% if form.tipo.errors %}
+                        <span class="form-error">{{ form.tipo.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+
+                <label for="id_camas">
+                    Cantidad y tipo de camas
+                    <input
+                        id="id_camas"
+                        type="text"
+                        name="camas"
+                        value="{{ form.camas.value|default:'' }}"
+                        placeholder="Ej: 1 cama matrimonial o 2 individuales"
+                    >
+                    {% if form.camas.errors %}
+                        <span class="form-error">{{ form.camas.errors|join:", " }}</span>
+                    {% endif %}
+                </label>
+            </div>
+
+            <label for="id_descripcion_hab">
+                Descripción de la habitación (opcional)
+                <textarea
+                    id="id_descripcion_hab"
+                    name="descripcion"
+                    rows="2"
+                    placeholder="Detalles sobre equipamiento, baño privado, balcón, etc."
+                >{{ form.descripcion.value|default:'' }}</textarea>
+                {% if form.descripcion.errors %}
+                    <span class="form-error">{{ form.descripcion.errors|join:", " }}</span>
                 {% endif %}
             </label>
 

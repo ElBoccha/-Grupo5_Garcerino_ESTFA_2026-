@@ -5,6 +5,68 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Usuario, Alojamiento, Habitacion, SolicitudPropietario, Reserva, ServicioAlojamiento
 
+# Límite de tamaño para archivos de imagen (10 MB)
+IMAGEN_MAX_BYTES = 10 * 1024 * 1024
+
+# Firmas mágicas (magic bytes) de formatos de imagen permitidos
+MAGIC_BYTES_IMAGENES = [
+    (b'\xff\xd8\xff', 'JPEG'),
+    (b'\x89PNG\r\n\x1a\n', 'PNG'),
+    (b'GIF87a', 'GIF'),
+    (b'GIF89a', 'GIF'),
+    (b'BM', 'BMP'),
+    (b'\x00\x00\x01\x00', 'ICO'),
+]
+
+
+def _es_webp(header_bytes):
+    """Verifica firma WEBP: RIFF????WEBP"""
+    return (len(header_bytes) >= 12
+            and header_bytes[:4] == b'RIFF'
+            and header_bytes[8:12] == b'WEBP')
+
+
+def validar_archivo_imagen(archivo):
+    """
+    Valida que un archivo sea una imagen real verificando magic bytes.
+    Rechaza PDFs, ejecutables y otros archivos no-imagen.
+    Limita el tamaño a IMAGEN_MAX_BYTES.
+    Deja el puntero del archivo en 0 al terminar.
+    """
+    if hasattr(archivo, 'size') and archivo.size > IMAGEN_MAX_BYTES:
+        raise ValidationError(
+            f'El archivo "{archivo.name}" es demasiado grande. '
+            f'El tamaño máximo permitido es 10 MB.'
+        )
+
+    # Leer los primeros 12 bytes para verificar firma
+    try:
+        archivo.seek(0)
+        header = archivo.read(12)
+        archivo.seek(0)
+    except Exception:
+        raise ValidationError(f'No se pudo leer el archivo "{getattr(archivo, "name", "")}".')
+
+    # Verificar firmas conocidas
+    for magic, fmt in MAGIC_BYTES_IMAGENES:
+        if header[:len(magic)] == magic:
+            return  # Firma de imagen reconocida, OK
+
+    if _es_webp(header):
+        return  # WEBP, OK
+
+    # Detectar PDF explícitamente para dar un mensaje claro
+    if header[:4] == b'%PDF':
+        raise ValidationError(
+            f'El archivo "{getattr(archivo, "name", "")}" es un PDF. '
+            'Solo se aceptan imágenes (JPG, PNG, WEBP, GIF).'
+        )
+
+    raise ValidationError(
+        f'El archivo "{getattr(archivo, "name", "")}" no es una imagen válida. '
+        'Se aceptan únicamente imágenes JPG, PNG, WEBP o GIF.'
+    )
+
 
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
@@ -25,8 +87,16 @@ class MultipleFileField(forms.FileField):
     def clean(self, data, initial=None):
         single_clean = super().clean
         if isinstance(data, (list, tuple)):
-            return [single_clean(f, initial) for f in data]
-        return [single_clean(data, initial)] if data else []
+            archivos = [single_clean(f, initial) for f in data]
+        else:
+            archivos = [single_clean(data, initial)] if data else []
+
+        # Validar cada archivo con magic bytes
+        for archivo in archivos:
+            if archivo:
+                validar_archivo_imagen(archivo)
+
+        return archivos
 
 
 class RegistroUsuario(UserCreationForm):
@@ -264,6 +334,12 @@ class RegistroAlojamiento(forms.ModelForm):
             raise forms.ValidationError('La longitud debe ser un valor válido entre -180 y 180.')
         return lng
 
+    def clean_imagen_principal(self):
+        imagen = self.cleaned_data.get('imagen_principal')
+        if imagen:
+            validar_archivo_imagen(imagen)
+        return imagen
+
     def clean(self):
         cleaned_data = super().clean()
         lat = cleaned_data.get('latitud')
@@ -302,11 +378,15 @@ class HabitacionLoteForm(forms.Form):
     de números (ej: del 1 al 100). Todas comparten piso, tipo, capacidad y precio.
     """
     TIPOS_HABITACION = (
-        ('Simple', 'Simple'),
-        ('Doble', 'Doble'),
-        ('Triple', 'Triple'),
+        ('Individual', 'Individual (1 persona)'),
+        ('Doble', 'Doble (2 personas)'),
+        ('Twin', 'Twin (2 camas individuales)'),
+        ('Triple', 'Triple (3 personas)'),
+        ('Cuadruple', 'Cuádruple (4 personas)'),
+        ('Familiar', 'Familiar (hasta 6 personas)'),
         ('Suite', 'Suite'),
-        ('Familiar', 'Familiar'),
+        ('Dormitorio compartido', 'Dormitorio compartido (hostel)'),
+        ('Simple', 'Simple'),
     )
 
     hab_desde = forms.IntegerField(
@@ -333,6 +413,12 @@ class HabitacionLoteForm(forms.Form):
         label='Precio por noche ($)',
         min_value=1,
     )
+    camas = forms.CharField(
+        label='Camas (opcional)',
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Ej: 1 cama matrimonial o 2 individuales'}),
+    )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -352,11 +438,15 @@ class HabitacionForm(forms.ModelForm):
     Valida que los valores numéricos sean positivos y mayores a cero donde corresponda.
     """
     TIPOS_HABITACION = (
-        ('Simple', 'Simple'),
-        ('Doble', 'Doble'),
-        ('Triple', 'Triple'),
+        ('Individual', 'Individual (1 persona)'),
+        ('Doble', 'Doble (2 personas)'),
+        ('Twin', 'Twin (2 camas individuales)'),
+        ('Triple', 'Triple (3 personas)'),
+        ('Cuadruple', 'Cuádruple (4 personas)'),
+        ('Familiar', 'Familiar (hasta 6 personas)'),
         ('Suite', 'Suite'),
-        ('Familiar', 'Familiar'),
+        ('Dormitorio compartido', 'Dormitorio compartido (hostel)'),
+        ('Simple', 'Simple'),
     )
 
     tipo = forms.ChoiceField(choices=TIPOS_HABITACION, label='Tipo de habitacion')
@@ -380,7 +470,9 @@ class HabitacionForm(forms.ModelForm):
             "numero_piso",
             "capacidad_maxima",
             "tipo",
+            "camas",
             "precio_noche",
+            "descripcion",
             "disponible",
             "fecha_desocupacion_automatica",
         ]
@@ -389,9 +481,15 @@ class HabitacionForm(forms.ModelForm):
             "numero_piso": "Numero de piso",
             "capacidad_maxima": "Capacidad maxima",
             "tipo": "Tipo de habitacion",
+            "camas": "Cantidad y tipo de camas",
             "precio_noche": "Precio por noche",
+            "descripcion": "Descripción (opcional)",
             "disponible": "Disponible para reservar",
             "fecha_desocupacion_automatica": "No disponible hasta (opcional)",
+        }
+        widgets = {
+            "camas": forms.TextInput(attrs={"placeholder": "Ej: 1 cama matrimonial"}),
+            "descripcion": forms.Textarea(attrs={"rows": 2, "placeholder": "Detalles adicionales, comodidades..."}),
         }
 
     def clean(self):
@@ -436,8 +534,7 @@ from .utils import obtener_fecha_limite_reserva
 class ReservaForm(forms.ModelForm):
     """
     Formulario de reserva de habitación.
-    Verifica coherencia de fechas: ingreso no anterior a hoy, fechas limitadas
-    a 1 año en adelante y salida posterior a ingreso.
+    Verifica coherencia de fechas y capacidad de huéspedes.
     """
     fecha_inicio = forms.DateField(
         label='Fecha de ingreso',
@@ -447,12 +544,20 @@ class ReservaForm(forms.ModelForm):
         label='Fecha de salida',
         widget=forms.DateInput(attrs={'type': 'date'})
     )
+    cantidad_huespedes = forms.IntegerField(
+        label='Cantidad de huéspedes',
+        min_value=1,
+        initial=1,
+        required=False,
+        widget=forms.NumberInput(attrs={'min': 1, 'max': 20, 'id': 'id_cantidad_huespedes'})
+    )
 
     class Meta:
         model = Reserva
-        fields = ['id_habitacion', 'fecha_inicio', 'fecha_finalizacion']
+        fields = ['id_habitacion', 'fecha_inicio', 'fecha_finalizacion', 'cantidad_huespedes']
         labels = {
             'id_habitacion': 'Habitacion',
+            'cantidad_huespedes': 'Cantidad de huéspedes',
         }
 
     def __init__(self, *args, **kwargs):
@@ -472,6 +577,9 @@ class ReservaForm(forms.ModelForm):
         cleaned_data = super().clean()
         fecha_inicio = cleaned_data.get('fecha_inicio')
         fecha_finalizacion = cleaned_data.get('fecha_finalizacion')
+        habitacion = cleaned_data.get('id_habitacion')
+        cantidad_huespedes = cleaned_data.get('cantidad_huespedes') or 1
+        cleaned_data['cantidad_huespedes'] = cantidad_huespedes
 
         hoy = timezone.now().date()
         max_fecha = obtener_fecha_limite_reserva(hoy)
@@ -491,6 +599,13 @@ class ReservaForm(forms.ModelForm):
         if fecha_inicio and fecha_finalizacion:
             if fecha_inicio >= fecha_finalizacion:
                 self.add_error('fecha_finalizacion', 'La fecha de salida debe ser posterior a la fecha de ingreso.')
+
+        if habitacion and cantidad_huespedes:
+            if cantidad_huespedes > habitacion.capacidad_maxima:
+                self.add_error(
+                    'cantidad_huespedes',
+                    f'La cantidad de huéspedes ({cantidad_huespedes}) no puede superar la capacidad máxima de la habitación seleccionada ({habitacion.capacidad_maxima} personas).'
+                )
 
         return cleaned_data
 

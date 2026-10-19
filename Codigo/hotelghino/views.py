@@ -13,16 +13,21 @@ from django.utils.encoding import force_bytes
 from django.utils import timezone
 from django.conf import settings
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from django.db import transaction
 from django.template.loader import render_to_string
 from .emails import enviar_email_verificacion, email_verification_token_generator
-from .forms import RegistroUsuario
-from .forms import ModificarUsuarioForm
-from .forms import RegistroAlojamiento
-from .forms import HabitacionForm
-from .forms import HabitacionLoteForm
-from .forms import SolicitudPropietarioForm
-from .forms import ReservaForm
+from .forms import (
+    RegistroUsuario,
+    ModificarUsuarioForm,
+    RegistroAlojamiento,
+    HabitacionForm,
+    HabitacionLoteForm,
+    SolicitudPropietarioForm,
+    ReservaForm,
+    validar_archivo_imagen,
+)
 from .models import Alojamiento
 from .models import Habitacion
 from .models import SolicitudPropietario
@@ -261,6 +266,10 @@ def home(request):
     destino = request.GET.get('destino', '').strip()
     desde = request.GET.get('desde', '').strip()
     hasta = request.GET.get('hasta', '').strip()
+    huespedes = request.GET.get('huespedes', '').strip()
+    huespedes_int = None
+    if huespedes and huespedes.isdigit() and int(huespedes) > 0:
+        huespedes_int = int(huespedes)
 
     # Obtener solo hoteles aprobados (activos) ordenados por fecha con prefetch de habitaciones e imágenes
     alojamientos = Alojamiento.objects.filter(
@@ -445,9 +454,24 @@ def home(request):
                         fecha_finalizacion__gt=d_inicio
                     ).exclude(estado='Cancelada').values_list('id_habitacion_id', flat=True)
 
-                    alojamientos = alojamientos.filter(
-                        Q(habitacion__isnull=True) | ~Q(habitacion__id__in=reservas_ocupadas)
-                    ).distinct()
+                    if huespedes_int:
+                        # Hoteles con habitaciones disponibles para esa cantidad de huéspedes
+                        habs_validas = Habitacion.objects.filter(
+                            disponible=True,
+                            capacidad_maxima__gte=huespedes_int
+                        ).exclude(id__in=reservas_ocupadas).values_list('id_alohamiento_id', flat=True)
+                        alojamientos = alojamientos.filter(id__in=habs_validas).distinct()
+                    else:
+                        alojamientos = alojamientos.filter(
+                            Q(habitacion__isnull=True) | ~Q(habitacion__id__in=reservas_ocupadas)
+                        ).distinct()
+    elif huespedes_int:
+        # Sin fechas, pero con filtro de huéspedes
+        habs_con_capacidad = Habitacion.objects.filter(
+            disponible=True,
+            capacidad_maxima__gte=huespedes_int
+        ).values_list('id_alohamiento_id', flat=True)
+        alojamientos = alojamientos.filter(id__in=habs_con_capacidad).distinct()
 
     # Preparar datos geográficos de los hoteles filtrados para el mapa de resultados (Leaflet)
     hoteles_mapa = []
@@ -476,6 +500,7 @@ def home(request):
         'destino': destino,
         'desde': desde,
         'hasta': hasta,
+        'huespedes': huespedes,
         'fechas_validas': fechas_validas,
         'min_fecha': hoy.strftime('%Y-%m-%d'),
         'max_fecha': max_fecha.strftime('%Y-%m-%d'),
@@ -540,70 +565,72 @@ def registroAlojamiento(request):
         lote_ok = (not agregar_lote) or lote_form.is_valid()
 
         if form_ok and lote_ok:
-            alojamiento = form.save(commit=False)
-            alojamiento.tipo = 'HT'
-            alojamiento.estado = 'P'
-            alojamiento.id_usuario = request.user
-            alojamiento.save()
-            # Guardar la relación M2M de servicios
-            form.save_m2m()
+            with transaction.atomic():
+                alojamiento = form.save(commit=False)
+                alojamiento.tipo = 'HT'
+                alojamiento.estado = 'P'
+                alojamiento.id_usuario = request.user
+                alojamiento.save()
+                # Guardar la relación M2M de servicios
+                form.save_m2m()
 
-            # Imagen principal
-            imagen_principal = request.FILES.get('imagen_principal')
-            if imagen_principal:
-                # Eliminar portada previa si existe
-                ImagenAlojamiento.objects.filter(
-                    alojamiento=alojamiento, es_principal=True
-                ).delete()
-                ImagenAlojamiento.objects.create(
-                    alojamiento=alojamiento,
-                    imagen=imagen_principal,
-                    es_principal=True,
-                    orden=0,
-                )
+                # Imagen principal
+                imagen_principal = request.FILES.get('imagen_principal')
+                if imagen_principal:
+                    # Eliminar portada previa si existe
+                    ImagenAlojamiento.objects.filter(
+                        alojamiento=alojamiento, es_principal=True
+                    ).delete()
+                    ImagenAlojamiento.objects.create(
+                        alojamiento=alojamiento,
+                        imagen=imagen_principal,
+                        es_principal=True,
+                        orden=0,
+                    )
 
-            # Imágenes extra (múltiples archivos)
-            imagenes_extra = request.FILES.getlist('imagenes_extra')
-            imagenes_existentes = ImagenAlojamiento.objects.filter(
-                alojamiento=alojamiento, es_principal=False
-            ).count()
-            permitidas = max(0, 10 - imagenes_existentes)
-            for i, img in enumerate(imagenes_extra[:permitidas]):
-                ImagenAlojamiento.objects.create(
-                    alojamiento=alojamiento,
-                    imagen=img,
-                    es_principal=False,
-                    orden=imagenes_existentes + i + 1,
-                )
-            if len(imagenes_extra) > permitidas:
-                messages.warning(request, f'Solo se cargaron {permitidas} imágenes extra (límite: 10).')
+                # Imágenes extra (múltiples archivos)
+                imagenes_extra = request.FILES.getlist('imagenes_extra')
+                imagenes_existentes = ImagenAlojamiento.objects.filter(
+                    alojamiento=alojamiento, es_principal=False
+                ).count()
+                permitidas = max(0, 10 - imagenes_existentes)
+                for i, img in enumerate(imagenes_extra[:permitidas]):
+                    ImagenAlojamiento.objects.create(
+                        alojamiento=alojamiento,
+                        imagen=img,
+                        es_principal=False,
+                        orden=imagenes_existentes + i + 1,
+                    )
+                if len(imagenes_extra) > permitidas:
+                    messages.warning(request, f'Solo se cargaron {permitidas} imágenes extra (límite: 10).')
 
-            # Habitaciones en lote
-            if agregar_lote and lote_ok:
-                lote = lote_form.cleaned_data
-                creadas = 0
-                for num in range(lote['hab_desde'], lote['hab_hasta'] + 1):
-                    if not Habitacion.objects.filter(
-                        id_alohamiento=alojamiento,
-                        numero_habitacion=num
-                    ).exists():
-                        Habitacion.objects.create(
-                            numero_habitacion=num,
-                            numero_piso=lote['numero_piso'],
-                            capacidad_maxima=lote['capacidad_maxima'],
-                            tipo=lote['tipo'],
-                            precio_noche=lote['precio_noche'],
-                            disponible=True,
+                # Habitaciones en lote (solo si fue explícitamente solicitado)
+                if agregar_lote and lote_ok:
+                    lote = lote_form.cleaned_data
+                    creadas = 0
+                    for num in range(lote['hab_desde'], lote['hab_hasta'] + 1):
+                        if not Habitacion.objects.filter(
                             id_alohamiento=alojamiento,
-                            id_usuario=request.user,
-                        )
-                        creadas += 1
-                messages.success(
-                    request,
-                    f'Hotel registrado. Se crearon {creadas} habitaciones (N° {lote["hab_desde"]} a {lote["hab_hasta"]}).'
-                )
-            else:
-                messages.success(request, 'Hotel registrado correctamente. Queda en estado pendiente hasta la aprobación del administrador.')
+                            numero_habitacion=num
+                        ).exists():
+                            Habitacion.objects.create(
+                                numero_habitacion=num,
+                                numero_piso=lote['numero_piso'],
+                                capacidad_maxima=lote['capacidad_maxima'],
+                                tipo=lote['tipo'],
+                                camas=lote.get('camas', ''),
+                                precio_noche=lote['precio_noche'],
+                                disponible=True,
+                                id_alohamiento=alojamiento,
+                                id_usuario=request.user,
+                            )
+                            creadas += 1
+                    messages.success(
+                        request,
+                        f'Hotel registrado. Se crearon {creadas} habitaciones (N° {lote["hab_desde"]} a {lote["hab_hasta"]}).'
+                    )
+                else:
+                    messages.success(request, 'Hotel registrado correctamente. Queda en estado pendiente hasta la aprobación del administrador.')
 
             return redirect('mis_hoteles')
     else:
@@ -639,12 +666,15 @@ def modificarAlojamiento(request, alojamiento_id):
         messages.warning(request, 'Solo los propietarios pueden administrar hoteles.')
         return redirect('home')
 
-    alojamiento = get_object_or_404(
-        Alojamiento,
-        pk=alojamiento_id,
-        id_usuario=request.user,
-        tipo='HT'
-    )
+    if request.user.rol == 'A':
+        alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id, tipo='HT')
+    else:
+        alojamiento = get_object_or_404(
+            Alojamiento,
+            pk=alojamiento_id,
+            id_usuario=request.user,
+            tipo='HT'
+        )
 
     if request.method == 'POST':
         form = RegistroAlojamiento(request.POST, request.FILES, instance=alojamiento)
@@ -652,7 +682,8 @@ def modificarAlojamiento(request, alojamiento_id):
         if form.is_valid():
             hotel = form.save(commit=False)
             hotel.tipo = 'HT'
-            hotel.id_usuario = request.user
+            # Conservar el propietario original del hotel
+            hotel.id_usuario = alojamiento.id_usuario
             hotel.save()
             form.save_m2m()
 
@@ -707,12 +738,15 @@ def eliminarAlojamiento(request, alojamiento_id):
         messages.warning(request, 'Solo los propietarios pueden administrar hoteles.')
         return redirect('home')
 
-    alojamiento = get_object_or_404(
-        Alojamiento,
-        pk=alojamiento_id,
-        id_usuario=request.user,
-        tipo='HT'
-    )
+    if request.user.rol == 'A':
+        alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id, tipo='HT')
+    else:
+        alojamiento = get_object_or_404(
+            Alojamiento,
+            pk=alojamiento_id,
+            id_usuario=request.user,
+            tipo='HT'
+        )
 
     if request.method == 'POST':
         alojamiento.delete()
@@ -732,12 +766,15 @@ def registroHabitacion(request, alojamiento_id):
         messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
         return redirect('home')
 
-    alojamiento = get_object_or_404(
-        Alojamiento,
-        pk=alojamiento_id,
-        id_usuario=request.user,
-        tipo='HT'
-    )
+    if request.user.rol == 'A':
+        alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id, tipo='HT')
+    else:
+        alojamiento = get_object_or_404(
+            Alojamiento,
+            pk=alojamiento_id,
+            id_usuario=request.user,
+            tipo='HT'
+        )
 
     if alojamiento.estado == 'R':
         messages.warning(request, 'No podés agregar habitaciones a un hotel rechazado.')
@@ -749,7 +786,7 @@ def registroHabitacion(request, alojamiento_id):
         if form.is_valid():
             habitacion = form.save(commit=False)
             habitacion.id_alohamiento = alojamiento
-            habitacion.id_usuario = request.user
+            habitacion.id_usuario = alojamiento.id_usuario
             habitacion.save()
             messages.success(request, 'Habitacion registrada correctamente.')
             return redirect('mis_hoteles')
@@ -770,13 +807,16 @@ def modificarHabitacion(request, habitacion_id):
         messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
         return redirect('home')
 
-    habitacion = get_object_or_404(
-        Habitacion,
-        pk=habitacion_id,
-        id_usuario=request.user,
-        id_alohamiento__id_usuario=request.user,
-        id_alohamiento__tipo='HT'
-    )
+    if request.user.rol == 'A':
+        habitacion = get_object_or_404(Habitacion, pk=habitacion_id, id_alohamiento__tipo='HT')
+    else:
+        habitacion = get_object_or_404(
+            Habitacion,
+            pk=habitacion_id,
+            id_usuario=request.user,
+            id_alohamiento__id_usuario=request.user,
+            id_alohamiento__tipo='HT'
+        )
 
     if request.method == 'POST':
         form = HabitacionForm(request.POST, instance=habitacion)
@@ -802,15 +842,33 @@ def eliminarHabitacion(request, habitacion_id):
         messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
         return redirect('home')
 
-    habitacion = get_object_or_404(
-        Habitacion,
-        pk=habitacion_id,
-        id_usuario=request.user,
-        id_alohamiento__id_usuario=request.user,
-        id_alohamiento__tipo='HT'
-    )
+    if request.user.rol == 'A':
+        habitacion = get_object_or_404(Habitacion, pk=habitacion_id, id_alohamiento__tipo='HT')
+    else:
+        habitacion = get_object_or_404(
+            Habitacion,
+            pk=habitacion_id,
+            id_usuario=request.user,
+            id_alohamiento__id_usuario=request.user,
+            id_alohamiento__tipo='HT'
+        )
 
     if request.method == 'POST':
+        hoy = timezone.now().date()
+        reservas_futuras = Reserva.objects.filter(
+            id_habitacion=habitacion,
+            fecha_finalizacion__gte=hoy
+        ).exclude(estado='Cancelada')
+
+        if reservas_futuras.exists():
+            messages.error(
+                request,
+                f'No se puede eliminar la habitación {habitacion.numero_habitacion} porque tiene '
+                f'{reservas_futuras.count()} reserva(s) activa(s) o futuras. '
+                'Cancelá esas reservas primero o esperá a que finalicen.'
+            )
+            return redirect('mis_hoteles')
+
         habitacion.delete()
         messages.success(request, 'Habitacion eliminada correctamente.')
         return redirect('mis_hoteles')
@@ -867,6 +925,10 @@ def detalleHotel(request, alojamiento_id):
 
     desde = request.GET.get('desde', '').strip() or request.POST.get('fecha_inicio', '').strip()
     hasta = request.GET.get('hasta', '').strip() or request.POST.get('fecha_finalizacion', '').strip()
+    huespedes_param = request.GET.get('huespedes', '').strip() or request.POST.get('cantidad_huespedes', '').strip()
+    huespedes_filtro = None
+    if huespedes_param and huespedes_param.isdigit() and int(huespedes_param) > 0:
+        huespedes_filtro = int(huespedes_param)
 
     hoy = timezone.now().date()
     max_fecha = obtener_fecha_limite_reserva(hoy)
@@ -927,56 +989,66 @@ def detalleHotel(request, alojamiento_id):
         else:
             # Sin fechas: mostrar estado manual del propietario
             ocupada = not hab.disponible
+
         hab.esta_disponible = not ocupada
         habitaciones_con_estado.append(hab)
-        if not ocupada:
+        if not ocupada and (not huespedes_filtro or hab.capacidad_maxima >= huespedes_filtro):
             habitaciones_disponibles_ids.append(hab.id)
 
     habitaciones_disponibles_qs = habitaciones.filter(id__in=habitaciones_disponibles_ids)
 
     if request.method == 'POST':
         form = ReservaForm(request.POST)
-        form.fields['id_habitacion'].queryset = habitaciones_disponibles_qs
+        form.fields['id_habitacion'].queryset = habitaciones
 
         if form.is_valid():
             habitacion = form.cleaned_data['id_habitacion']
             fecha_inicio = form.cleaned_data['fecha_inicio']
             fecha_finalizacion = form.cleaned_data['fecha_finalizacion']
+            cantidad_huespedes = form.cleaned_data.get('cantidad_huespedes') or 1
 
             if habitacion.id_alohamiento != alojamiento:
                 messages.error(request, 'La habitacion seleccionada no pertenece a este hotel.')
                 return redirect('detalle_hotel', alojamiento_id=alojamiento.id)
 
-            solapada = Reserva.objects.filter(
-                id_habitacion=habitacion,
-                fecha_inicio__lt=fecha_finalizacion,
-                fecha_finalizacion__gt=fecha_inicio
-            ).exclude(estado='Cancelada').exists()
+            if cantidad_huespedes > habitacion.capacidad_maxima:
+                messages.error(request, f'La cantidad de huéspedes ({cantidad_huespedes}) no puede superar la capacidad máxima de la habitación seleccionada ({habitacion.capacidad_maxima} personas).')
+                return redirect('detalle_hotel', alojamiento_id=alojamiento.id)
 
-            if not habitacion.disponible:
-                messages.error(request, 'La habitacion seleccionada no esta disponible para reservar.')
-            elif solapada:
-                messages.error(request, 'La habitacion seleccionada no esta disponible para las fechas ingresadas.')
-            else:
-                dias = (fecha_finalizacion - fecha_inicio).days
-                pago = dias * habitacion.precio_noche
+            dias = (fecha_finalizacion - fecha_inicio).days
+            if dias <= 0:
+                messages.error(request, 'La fecha de salida debe ser posterior a la fecha de ingreso.')
+                return redirect('detalle_hotel', alojamiento_id=alojamiento.id)
 
-                Reserva.objects.create(
-                    fecha_inicio=fecha_inicio,
-                    fecha_finalizacion=fecha_finalizacion,
-                    estado='Confirmada',
-                    pago=pago,
-                    id_alohamiento=alojamiento,
-                    id_usuario=request.user,
-                    id_habitacion=habitacion
-                )
-                # Marcar habitación como no disponible automáticamente y fijar desocupación al terminar
-                habitacion.disponible = False
-                habitacion.fecha_desocupacion_automatica = fecha_finalizacion
-                habitacion.save(update_fields=['disponible', 'fecha_desocupacion_automatica'])
+            with transaction.atomic():
+                # Re-verificar disponibilidad en el servidor en el momento exacto de confirmación
+                solapada = Reserva.objects.filter(
+                    id_habitacion=habitacion,
+                    fecha_inicio__lt=fecha_finalizacion,
+                    fecha_finalizacion__gt=fecha_inicio
+                ).exclude(estado='Cancelada').exists()
 
-                messages.success(request, f'¡Reserva confirmada en {alojamiento.nombre} para la habitacion {habitacion.numero_habitacion}! Total abonado: ${pago}.')
-                return redirect('mis_reservas')
+                if not habitacion.disponible:
+                    messages.error(request, 'La habitacion seleccionada no esta disponible para reservar.')
+                elif solapada:
+                    messages.error(request, 'La habitación seleccionada no está disponible en esas fechas porque ya cuenta con una reserva activa. Por favor elegí otra habitación o rango de fechas.')
+                else:
+                    # Cálculo riguroso del precio en el servidor (días * precio_noche oficial)
+                    pago = dias * habitacion.precio_noche
+
+                    Reserva.objects.create(
+                        fecha_inicio=fecha_inicio,
+                        fecha_finalizacion=fecha_finalizacion,
+                        estado='Confirmada',
+                        cantidad_huespedes=cantidad_huespedes,
+                        pago=pago,
+                        id_alohamiento=alojamiento,
+                        id_usuario=request.user,
+                        id_habitacion=habitacion
+                    )
+
+                    messages.success(request, f'¡Reserva confirmada en {alojamiento.nombre} para la habitación {habitacion.numero_habitacion}! Total: ${pago}.')
+                    return redirect('mis_reservas')
         else:
             for field, err_list in form.errors.items():
                 for err in err_list:
@@ -987,6 +1059,8 @@ def detalleHotel(request, alojamiento_id):
             initial_data['fecha_inicio'] = d_inicio
         if hasta and fechas_validas and d_fin:
             initial_data['fecha_finalizacion'] = d_fin
+        if huespedes_filtro:
+            initial_data['cantidad_huespedes'] = huespedes_filtro
 
         form = ReservaForm(initial=initial_data)
         form.fields['id_habitacion'].queryset = habitaciones_disponibles_qs
@@ -998,6 +1072,7 @@ def detalleHotel(request, alojamiento_id):
         'form': form,
         'desde': desde,
         'hasta': hasta,
+        'huespedes_param': huespedes_param,
         'fechas_validas': fechas_validas,
         'd_inicio': d_inicio,
         'd_fin': d_fin,
@@ -1025,25 +1100,9 @@ def cancelarReserva(request, reserva_id):
 
     if request.method == 'POST':
         reserva.estado = 'Cancelada'
-        reserva.save()
+        reserva.save(update_fields=['estado'])
 
-        # Liberar habitación automáticamente si no quedan reservas activas vigentes o futuras
-        habitacion = reserva.id_habitacion
-        hoy = timezone.now().date()
-        proxima_reserva = Reserva.objects.filter(
-            id_habitacion=habitacion,
-            fecha_finalizacion__gt=hoy
-        ).exclude(estado='Cancelada').exclude(pk=reserva.pk).order_by('fecha_finalizacion').last()
-
-        if proxima_reserva:
-            habitacion.fecha_desocupacion_automatica = proxima_reserva.fecha_finalizacion
-            habitacion.save(update_fields=['fecha_desocupacion_automatica'])
-        else:
-            habitacion.disponible = True
-            habitacion.fecha_desocupacion_automatica = None
-            habitacion.save(update_fields=['disponible', 'fecha_desocupacion_automatica'])
-
-        messages.success(request, 'Reserva cancelada correctamente.')
+        messages.success(request, 'Reserva cancelada correctamente. La disponibilidad de la habitación fue actualizada.')
         return redirect('mis_reservas')
 
     return render(request, 'confirmar-eliminacion.html', {
@@ -1063,13 +1122,16 @@ def toggleDisponibilidadHabitacion(request, habitacion_id):
         messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
         return redirect('home')
 
-    habitacion = get_object_or_404(
-        Habitacion,
-        pk=habitacion_id,
-        id_usuario=request.user,
-        id_alohamiento__id_usuario=request.user,
-        id_alohamiento__tipo='HT'
-    )
+    if request.user.rol == 'A':
+        habitacion = get_object_or_404(Habitacion, pk=habitacion_id, id_alohamiento__tipo='HT')
+    else:
+        habitacion = get_object_or_404(
+            Habitacion,
+            pk=habitacion_id,
+            id_usuario=request.user,
+            id_alohamiento__id_usuario=request.user,
+            id_alohamiento__tipo='HT'
+        )
 
     if request.method == 'POST':
         habitacion.disponible = not habitacion.disponible
@@ -1085,21 +1147,24 @@ def toggleDisponibilidadHabitacion(request, habitacion_id):
 @login_required
 def gestionarImagenesHotel(request, alojamiento_id):
     """
-    Permite al propietario subir y eliminar imágenes de su hotel.
+    Permite al propietario o administrador subir y eliminar imágenes de su hotel.
     - GET: muestra galería actual + formulario de subida.
-    - POST action=subir: sube imagen principal y/o fotos extra.
+    - POST action=subir: sube imagen principal y/o fotos extra validando que sean imágenes reales (no PDF).
     - POST action=eliminar: elimina una imagen por id.
     """
     if request.user.rol not in ['P', 'A']:
         messages.warning(request, 'Solo los propietarios pueden gestionar imágenes.')
         return redirect('home')
 
-    alojamiento = get_object_or_404(
-        Alojamiento,
-        pk=alojamiento_id,
-        id_usuario=request.user,
-        tipo='HT'
-    )
+    if request.user.rol == 'A':
+        alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id, tipo='HT')
+    else:
+        alojamiento = get_object_or_404(
+            Alojamiento,
+            pk=alojamiento_id,
+            id_usuario=request.user,
+            tipo='HT'
+        )
 
     if request.method == 'POST':
         action = request.POST.get('action', '')
@@ -1118,16 +1183,20 @@ def gestionarImagenesHotel(request, alojamiento_id):
             # Imagen principal
             imagen_principal = request.FILES.get('imagen_principal')
             if imagen_principal:
-                ImagenAlojamiento.objects.filter(
-                    alojamiento=alojamiento, es_principal=True
-                ).delete()
-                ImagenAlojamiento.objects.create(
-                    alojamiento=alojamiento,
-                    imagen=imagen_principal,
-                    es_principal=True,
-                    orden=0,
-                )
-                messages.success(request, 'Imagen principal actualizada.')
+                try:
+                    validar_archivo_imagen(imagen_principal)
+                    ImagenAlojamiento.objects.filter(
+                        alojamiento=alojamiento, es_principal=True
+                    ).delete()
+                    ImagenAlojamiento.objects.create(
+                        alojamiento=alojamiento,
+                        imagen=imagen_principal,
+                        es_principal=True,
+                        orden=0,
+                    )
+                    messages.success(request, 'Imagen principal actualizada.')
+                except ValidationError as e:
+                    messages.error(request, e.message if hasattr(e, 'message') else str(e))
 
             # Imágenes extra (múltiples)
             imagenes_extra = request.FILES.getlist('imagenes_extra')
@@ -1136,15 +1205,25 @@ def gestionarImagenesHotel(request, alojamiento_id):
                     alojamiento=alojamiento, es_principal=False
                 ).count()
                 permitidas = max(0, 10 - existentes)
-                for i, img in enumerate(imagenes_extra[:permitidas]):
-                    ImagenAlojamiento.objects.create(
-                        alojamiento=alojamiento,
-                        imagen=img,
-                        es_principal=False,
-                        orden=existentes + i + 1,
-                    )
-                if permitidas > 0:
-                    messages.success(request, f'Se subieron {min(len(imagenes_extra), permitidas)} imágenes adicionales.')
+                subidas = 0
+                for img in imagenes_extra:
+                    if subidas >= permitidas:
+                        break
+                    try:
+                        validar_archivo_imagen(img)
+                        ImagenAlojamiento.objects.create(
+                            alojamiento=alojamiento,
+                            imagen=img,
+                            es_principal=False,
+                            orden=existentes + subidas + 1,
+                        )
+                        subidas += 1
+                    except ValidationError as e:
+                        msg = e.message if hasattr(e, 'message') else str(e)
+                        messages.error(request, f'No se pudo subir "{img.name}": {msg}')
+
+                if subidas > 0:
+                    messages.success(request, f'Se subieron {subidas} imágenes adicionales.')
                 if len(imagenes_extra) > permitidas:
                     messages.warning(request, f'Límite alcanzado: solo se cargaron {permitidas} de {len(imagenes_extra)} fotos (máximo 10 extra).')
 
