@@ -558,13 +558,8 @@ def registroAlojamiento(request):
 
     if request.method == 'POST':
         form = RegistroAlojamiento(request.POST, request.FILES)
-        lote_form = HabitacionLoteForm(request.POST)
-        agregar_lote = request.POST.get('agregar_habitaciones') in ['1', 'true', 'on', 'True', True] or request.POST.get('crear_habitaciones_lote') in ['1', 'true', 'on', 'True', True]
 
-        form_ok = form.is_valid()
-        lote_ok = (not agregar_lote) or lote_form.is_valid()
-
-        if form_ok and lote_ok:
+        if form.is_valid():
             with transaction.atomic():
                 alojamiento = form.save(commit=False)
                 alojamiento.tipo = 'HT'
@@ -604,42 +599,14 @@ def registroAlojamiento(request):
                 if len(imagenes_extra) > permitidas:
                     messages.warning(request, f'Solo se cargaron {permitidas} imágenes extra (límite: 10).')
 
-                # Habitaciones en lote (solo si fue explícitamente solicitado)
-                if agregar_lote and lote_ok:
-                    lote = lote_form.cleaned_data
-                    creadas = 0
-                    for num in range(lote['hab_desde'], lote['hab_hasta'] + 1):
-                        if not Habitacion.objects.filter(
-                            id_alohamiento=alojamiento,
-                            numero_habitacion=num
-                        ).exists():
-                            Habitacion.objects.create(
-                                numero_habitacion=num,
-                                numero_piso=lote['numero_piso'],
-                                capacidad_maxima=lote['capacidad_maxima'],
-                                tipo=lote['tipo'],
-                                camas=lote.get('camas', ''),
-                                precio_noche=lote['precio_noche'],
-                                disponible=True,
-                                id_alohamiento=alojamiento,
-                                id_usuario=request.user,
-                            )
-                            creadas += 1
-                    messages.success(
-                        request,
-                        f'Hotel registrado. Se crearon {creadas} habitaciones (N° {lote["hab_desde"]} a {lote["hab_hasta"]}).'
-                    )
-                else:
-                    messages.success(request, 'Hotel registrado correctamente. Queda en estado pendiente hasta la aprobación del administrador.')
+                messages.success(request, 'Hotel registrado correctamente. Queda en estado pendiente hasta la aprobación del administrador.')
 
             return redirect('mis_hoteles')
     else:
         form = RegistroAlojamiento()
-        lote_form = HabitacionLoteForm()
 
     return render(request, 'registro-hoteles.html', {
         'form': form,
-        'lote_form': lote_form,
         'servicios': ServicioAlojamiento.objects.all().order_by('orden'),
     })
 
@@ -781,7 +748,7 @@ def registroHabitacion(request, alojamiento_id):
         return redirect('mis_hoteles')
 
     if request.method == 'POST':
-        form = HabitacionForm(request.POST)
+        form = HabitacionForm(request.POST, alojamiento=alojamiento)
 
         if form.is_valid():
             habitacion = form.save(commit=False)
@@ -791,13 +758,92 @@ def registroHabitacion(request, alojamiento_id):
             messages.success(request, 'Habitacion registrada correctamente.')
             return redirect('mis_hoteles')
     else:
-        form = HabitacionForm()
+        form = HabitacionForm(alojamiento=alojamiento)
 
     return render(request, 'formulario-habitacion.html', {
         'form': form,
         'alojamiento': alojamiento,
         'titulo': 'Agregar habitacion',
         'boton': 'Registrar habitacion',
+        'hoy': timezone.now().date(),
+    })
+
+
+@login_required
+def registroHabitacionLote(request, alojamiento_id):
+    """Creación de habitaciones en lote para un alojamiento aprobado."""
+    if request.user.rol not in ['P', 'A']:
+        messages.warning(request, 'Solo los propietarios pueden administrar habitaciones.')
+        return redirect('home')
+
+    if request.user.rol == 'A':
+        alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id, tipo='HT')
+    else:
+        alojamiento = get_object_or_404(
+            Alojamiento,
+            pk=alojamiento_id,
+            id_usuario=request.user,
+            tipo='HT'
+        )
+
+    if alojamiento.estado != 'A':
+        messages.warning(request, 'Solo podés crear habitaciones en lote para hoteles aprobados.')
+        return redirect('mis_hoteles')
+
+    if request.method == 'POST':
+        form = HabitacionLoteForm(request.POST, alojamiento=alojamiento)
+
+        if form.is_valid():
+            datos = form.cleaned_data
+            lista_numeros = datos.get('lista_numeros')
+            if not lista_numeros:
+                num_ini = datos.get('numero_inicial') or 1
+                cant = datos.get('cantidad') or 1
+                lista_numeros = list(range(num_ini, num_ini + cant))
+
+            creadas = 0
+            with transaction.atomic():
+                for num in lista_numeros:
+                    if not Habitacion.objects.filter(
+                        id_alohamiento=alojamiento,
+                        numero_habitacion=num,
+                    ).exists():
+                        Habitacion.objects.create(
+                            numero_habitacion=num,
+                            numero_piso=datos['numero_piso'],
+                            capacidad_maxima=datos['capacidad_maxima'],
+                            tipo=datos['tipo'],
+                            camas=datos.get('camas', ''),
+                            precio_noche=datos['precio_noche'],
+                            descripcion=datos.get('descripcion', ''),
+                            disponible=datos.get('disponible', True),
+                            id_alohamiento=alojamiento,
+                            id_usuario=alojamiento.id_usuario,
+                        )
+                        creadas += 1
+
+            if creadas > 0:
+                if len(lista_numeros) <= 8:
+                    nums_str = ", ".join(str(n) for n in sorted(lista_numeros))
+                    msg_nums = f"(N° {nums_str})"
+                else:
+                    msg_nums = f"(N° {min(lista_numeros)} a {max(lista_numeros)}, total: {creadas})"
+                messages.success(
+                    request,
+                    f'Se crearon {creadas} habitaciones {msg_nums} en {alojamiento.nombre}.'
+                )
+            else:
+                messages.warning(request, 'No se crearon habitaciones porque todos los números ya existían.')
+
+            return redirect('mis_hoteles')
+    else:
+        form = HabitacionLoteForm(alojamiento=alojamiento)
+
+    return render(request, 'formulario-habitacion-lote.html', {
+        'form': form,
+        'alojamiento': alojamiento,
+        'titulo': 'Crear habitaciones en lote',
+        'boton': 'Crear habitaciones',
     })
 
 
@@ -819,20 +865,21 @@ def modificarHabitacion(request, habitacion_id):
         )
 
     if request.method == 'POST':
-        form = HabitacionForm(request.POST, instance=habitacion)
+        form = HabitacionForm(request.POST, instance=habitacion, alojamiento=habitacion.id_alohamiento)
 
         if form.is_valid():
             form.save()
             messages.success(request, 'Habitacion modificada correctamente.')
             return redirect('mis_hoteles')
     else:
-        form = HabitacionForm(instance=habitacion)
+        form = HabitacionForm(instance=habitacion, alojamiento=habitacion.id_alohamiento)
 
     return render(request, 'formulario-habitacion.html', {
         'form': form,
         'alojamiento': habitacion.id_alohamiento,
         'titulo': 'Modificar habitacion',
         'boton': 'Guardar cambios',
+        'hoy': timezone.now().date(),
     })
 
 

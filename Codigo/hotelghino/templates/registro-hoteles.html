@@ -50,6 +50,19 @@
         <form method="post" enctype="multipart/form-data" class="form-stack" id="form-registro-hotel">
             {% csrf_token %}
 
+            {% if form.errors %}
+                <div class="form-error-summary" style="padding: 10px 14px; border-radius: 8px; background: #fee2e2; border: 1px solid #f87171; color: #991b1b; font-size: 13.5px; margin-bottom: 14px;">
+                    <strong>Por favor, revisá los campos con errores para registrar el hotel.</strong>
+                    {% if form.non_field_errors %}
+                        <ul style="margin: 6px 0 0 16px; padding: 0;">
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            {% endif %}
+
             <label for="id_nombre">
                 Nombre del hotel
                 <input id="id_nombre" type="text" name="nombre" value="{{ form.nombre.value|default:'' }}" placeholder="Ej: Hotel Costa Azul" required>
@@ -157,12 +170,12 @@
                 <h3>Imágenes del hotel</h3>
                 <label for="id_imagen_principal">
                     Imagen principal (portada)
-                    <input type="file" name="imagen_principal" id="id_imagen_principal" accept="image/*">
+                    <input type="file" name="imagen_principal" id="id_imagen_principal" accept=".jpg,.jpeg,.png,.webp,.gif">
                     <span class="helptext">La foto que verán los huéspedes en las búsquedas.</span>
                 </label>
                 <label for="id_imagenes_extra">
                     Imágenes adicionales
-                    <input type="file" name="imagenes_extra" id="id_imagenes_extra" accept="image/*" multiple>
+                    <input type="file" name="imagenes_extra" id="id_imagenes_extra" accept=".jpg,.jpeg,.png,.webp,.gif" multiple>
                     <span class="helptext">Podés subir hasta 10 fotos más.</span>
                 </label>
             </div>
@@ -187,58 +200,6 @@
                 </div>
             </div>
 
-            <div class="form-section">
-                <h3>Habitaciones (Opcional)</h3>
-                <label class="servicio-checkbox">
-                    <input type="checkbox" name="agregar_habitaciones" value="1" id="id_agregar_habitaciones">
-                    <span class="servicio-label">Crear lote de habitaciones ahora</span>
-                </label>
-                <div id="lote-habitaciones" style="display: none; margin-top: 15px;">
-                    <div class="form-row">
-                        <label for="{{ lote_form.hab_desde.id_for_label }}">
-                            {{ lote_form.hab_desde.label }}
-                            {{ lote_form.hab_desde }}
-                            {% if lote_form.hab_desde.errors %}<span class="form-error">{{ lote_form.hab_desde.errors.0 }}</span>{% endif %}
-                        </label>
-                        <label for="{{ lote_form.hab_hasta.id_for_label }}">
-                            {{ lote_form.hab_hasta.label }}
-                            {{ lote_form.hab_hasta }}
-                            {% if lote_form.hab_hasta.errors %}<span class="form-error">{{ lote_form.hab_hasta.errors.0 }}</span>{% endif %}
-                        </label>
-                    </div>
-                    <div class="form-row">
-                        <label for="{{ lote_form.tipo.id_for_label }}">
-                            {{ lote_form.tipo.label }}
-                            {{ lote_form.tipo }}
-                            {% if lote_form.tipo.errors %}<span class="form-error">{{ lote_form.tipo.errors.0 }}</span>{% endif %}
-                        </label>
-                        <label for="{{ lote_form.numero_piso.id_for_label }}">
-                            {{ lote_form.numero_piso.label }}
-                            {{ lote_form.numero_piso }}
-                            {% if lote_form.numero_piso.errors %}<span class="form-error">{{ lote_form.numero_piso.errors.0 }}</span>{% endif %}
-                        </label>
-                    </div>
-                    <div class="form-row">
-                        <label for="{{ lote_form.capacidad_maxima.id_for_label }}">
-                            {{ lote_form.capacidad_maxima.label }}
-                            {{ lote_form.capacidad_maxima }}
-                            {% if lote_form.capacidad_maxima.errors %}<span class="form-error">{{ lote_form.capacidad_maxima.errors.0 }}</span>{% endif %}
-                        </label>
-                        <label for="{{ lote_form.precio_noche.id_for_label }}">
-                            {{ lote_form.precio_noche.label }}
-                            {{ lote_form.precio_noche }}
-                            {% if lote_form.precio_noche.errors %}<span class="form-error">{{ lote_form.precio_noche.errors.0 }}</span>{% endif %}
-                        </label>
-                    </div>
-                    <div class="form-row">
-                        <label for="{{ lote_form.camas.id_for_label }}">
-                            {{ lote_form.camas.label }}
-                            {{ lote_form.camas }}
-                            {% if lote_form.camas.errors %}<span class="form-error">{{ lote_form.camas.errors.0 }}</span>{% endif %}
-                        </label>
-                    </div>
-                </div>
-            </div>
 
             <button class="button button-primary button-full" id="btn-registrar-hotel" type="submit">
                 Registrar hotel
@@ -246,19 +207,67 @@
         </form>
 
         <p class="panel-footer"><a href="{% url 'home' %}">Volver al inicio</a></p>
-        
+
         <script>
-            document.getElementById('id_agregar_habitaciones').addEventListener('change', function() {
-                const lote = document.getElementById('lote-habitaciones');
-                const inputs = lote.querySelectorAll('input, select');
-                if (this.checked) {
-                    lote.style.display = 'block';
-                    inputs.forEach(input => input.setAttribute('required', 'required'));
-                } else {
-                    lote.style.display = 'none';
-                    inputs.forEach(input => input.removeAttribute('required'));
+            (function() {
+                const form = document.getElementById('form-registro-hotel');
+                const btn = document.getElementById('btn-registrar-hotel');
+                const inputPrinc = document.getElementById('id_imagen_principal');
+                const inputExtra = document.getElementById('id_imagenes_extra');
+                const extensionesValidas = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+
+                function validarArchivos(input) {
+                    if (!input || !input.files) return true;
+                    for (let i = 0; i < input.files.length; i++) {
+                        const file = input.files[i];
+                        const name = file.name.toLowerCase();
+                        const valida = extensionesValidas.some(ext => name.endsWith(ext));
+                        if (!valida) {
+                            alert('El archivo "' + file.name + '" no es una imagen permitida. Solo se admiten formatos JPG, PNG, WEBP y GIF. Los archivos PDF y otros documentos no están permitidos.');
+                            input.value = '';
+                            return false;
+                        }
+                        if (file.size > 10 * 1024 * 1024) {
+                            alert('La imagen "' + file.name + '" supera el límite máximo permitido de 10 MB.');
+                            input.value = '';
+                            return false;
+                        }
+                    }
+                    return true;
                 }
-            });
+
+                if (inputPrinc) {
+                    inputPrinc.addEventListener('change', function() { validarArchivos(this); });
+                }
+                if (inputExtra) {
+                    inputExtra.addEventListener('change', function() { validarArchivos(this); });
+                }
+
+                if (form && btn) {
+                    let enviando = false;
+                    form.addEventListener('submit', function(e) {
+                        if (enviando) {
+                            e.preventDefault();
+                            return;
+                        }
+                        if (!form.checkValidity()) {
+                            return;
+                        }
+                        if (inputPrinc && !validarArchivos(inputPrinc)) {
+                            e.preventDefault();
+                            return;
+                        }
+                        if (inputExtra && !validarArchivos(inputExtra)) {
+                            e.preventDefault();
+                            return;
+                        }
+                        enviando = true;
+                        btn.style.opacity = '0.75';
+                        btn.style.cursor = 'wait';
+                        btn.textContent = 'Registrando hotel...';
+                    });
+                }
+            })();
         </script>
 
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

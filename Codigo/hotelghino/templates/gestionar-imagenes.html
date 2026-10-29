@@ -61,7 +61,7 @@
                     {% if img_principal %}Reemplazar portada{% else %}Subir imagen de portada{% endif %}
                 </label>
                 <div class="img-manager__file-row">
-                    <input type="file" name="imagen_principal" id="id_imagen_principal" accept="image/*" class="img-manager__file-input">
+                    <input type="file" name="imagen_principal" id="id_imagen_principal" accept=".jpg,.jpeg,.png,.webp,.gif" class="img-manager__file-input">
                     <button type="submit" class="button button-accent button--sm">Guardar portada</button>
                 </div>
                 <small class="img-manager__hint">Formatos aceptados: JPG, PNG, WEBP. Se reemplaza la portada anterior.</small>
@@ -107,7 +107,7 @@
                     Agregar fotos a la galería (podés subir hasta {{ 10|add:"-"|add:total_extra }} más)
                 </label>
                 <div class="img-manager__file-row">
-                    <input type="file" name="imagenes_extra" id="id_imagenes_extra" accept="image/*" multiple class="img-manager__file-input">
+                    <input type="file" name="imagenes_extra" id="id_imagenes_extra" accept=".jpg,.jpeg,.png,.webp,.gif" multiple class="img-manager__file-input">
                     <button type="submit" class="button button-accent button--sm">Subir fotos</button>
                 </div>
                 <small class="img-manager__hint">Podés seleccionar varias fotos a la vez. Máximo 10 fotos en la galería.</small>

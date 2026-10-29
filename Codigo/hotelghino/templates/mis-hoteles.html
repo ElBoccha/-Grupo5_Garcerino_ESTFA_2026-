@@ -57,7 +57,10 @@
                                 <p>{{ alojamiento.habitacion_set.count }} cargadas</p>
                             </div>
                             {% if alojamiento.estado == 'A' %}
-                                <a class="button button-secondary" href="{% url 'registrar_habitacion' alojamiento.id %}">Agregar habitacion</a>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <a class="button button-secondary" href="{% url 'registrar_habitacion' alojamiento.id %}">Agregar habitación</a>
+                                    <a class="button button-accent" href="{% url 'registrar_habitacion_lote' alojamiento.id %}">Crear en lote</a>
+                                </div>
                             {% else %}
                                 <span class="button button-secondary" style="opacity: 0.6; cursor: not-allowed;" title="El hotel debe estar aprobado para agregar habitaciones">Esperando aprobación</span>
                             {% endif %}
@@ -79,6 +82,7 @@
                                             <th>Piso</th>
                                             <th>Capacidad</th>
                                             <th>Tipo</th>
+                                            <th>Camas</th>
                                             <th>Precio</th>
                                             <th>Disponibilidad</th>
                                             <th>Acciones</th>
@@ -91,6 +95,7 @@
                                                 <td>{{ habitacion.numero_piso }}</td>
                                                 <td>{{ habitacion.capacidad_maxima }}</td>
                                                 <td>{{ habitacion.tipo }}</td>
+                                                <td>{% if habitacion.camas %}{{ habitacion.camas }}{% else %}&mdash;{% endif %}</td>
                                                 <td>${{ habitacion.precio_noche }}</td>
                                                 <td>
                                                     {% if habitacion.disponible %}

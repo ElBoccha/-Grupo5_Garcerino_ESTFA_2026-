@@ -1,3 +1,4 @@
+import re
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.password_validation import validate_password
@@ -5,67 +6,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import Usuario, Alojamiento, Habitacion, SolicitudPropietario, Reserva, ServicioAlojamiento
 
-# Límite de tamaño para archivos de imagen (10 MB)
-IMAGEN_MAX_BYTES = 10 * 1024 * 1024
-
-# Firmas mágicas (magic bytes) de formatos de imagen permitidos
-MAGIC_BYTES_IMAGENES = [
-    (b'\xff\xd8\xff', 'JPEG'),
-    (b'\x89PNG\r\n\x1a\n', 'PNG'),
-    (b'GIF87a', 'GIF'),
-    (b'GIF89a', 'GIF'),
-    (b'BM', 'BMP'),
-    (b'\x00\x00\x01\x00', 'ICO'),
-]
-
-
-def _es_webp(header_bytes):
-    """Verifica firma WEBP: RIFF????WEBP"""
-    return (len(header_bytes) >= 12
-            and header_bytes[:4] == b'RIFF'
-            and header_bytes[8:12] == b'WEBP')
-
-
-def validar_archivo_imagen(archivo):
-    """
-    Valida que un archivo sea una imagen real verificando magic bytes.
-    Rechaza PDFs, ejecutables y otros archivos no-imagen.
-    Limita el tamaño a IMAGEN_MAX_BYTES.
-    Deja el puntero del archivo en 0 al terminar.
-    """
-    if hasattr(archivo, 'size') and archivo.size > IMAGEN_MAX_BYTES:
-        raise ValidationError(
-            f'El archivo "{archivo.name}" es demasiado grande. '
-            f'El tamaño máximo permitido es 10 MB.'
-        )
-
-    # Leer los primeros 12 bytes para verificar firma
-    try:
-        archivo.seek(0)
-        header = archivo.read(12)
-        archivo.seek(0)
-    except Exception:
-        raise ValidationError(f'No se pudo leer el archivo "{getattr(archivo, "name", "")}".')
-
-    # Verificar firmas conocidas
-    for magic, fmt in MAGIC_BYTES_IMAGENES:
-        if header[:len(magic)] == magic:
-            return  # Firma de imagen reconocida, OK
-
-    if _es_webp(header):
-        return  # WEBP, OK
-
-    # Detectar PDF explícitamente para dar un mensaje claro
-    if header[:4] == b'%PDF':
-        raise ValidationError(
-            f'El archivo "{getattr(archivo, "name", "")}" es un PDF. '
-            'Solo se aceptan imágenes (JPG, PNG, WEBP, GIF).'
-        )
-
-    raise ValidationError(
-        f'El archivo "{getattr(archivo, "name", "")}" no es una imagen válida. '
-        'Se aceptan únicamente imágenes JPG, PNG, WEBP o GIF.'
-    )
+from .validators import validar_archivo_imagen, IMAGEN_MAX_BYTES
 
 
 class MultipleFileInput(forms.ClearableFileInput):
@@ -372,63 +313,373 @@ class RegistroAlojamiento(forms.ModelForm):
         return cleaned_data
 
 
+# Categorías habituales de habitaciones turísticas, sin capacidad incrustada en el nombre.
+# Se excluye 'Individual' ya que se unifica con 'Simple'.
+CATEGORIAS_HABITACION = (
+    ('Simple', 'Simple'),
+    ('Doble', 'Doble'),
+    ('Twin', 'Twin (dos camas individuales)'),
+    ('Matrimonial', 'Matrimonial'),
+    ('Triple', 'Triple'),
+    ('Cuadruple', 'Cuádruple'),
+    ('Familiar', 'Familiar'),
+    ('Suite junior', 'Suite junior'),
+    ('Suite', 'Suite'),
+    ('Estudio o monoambiente', 'Estudio o monoambiente'),
+    ('Departamento o apartamento', 'Departamento o apartamento'),
+    ('Dormitorio compartido', 'Dormitorio compartido'),
+)
+
+# Para formularios se utilizan las categorías vigentes más las históricas existentes en la BD (excepto Individual)
+TIPOS_HABITACION = CATEGORIAS_HABITACION + tuple(
+    opt for opt in Habitacion.TIPOS if opt[0] not in [c[0] for c in CATEGORIAS_HABITACION] and opt[0] != 'Individual'
+)
+
+# Opciones separadas para selección de camas en formularios
+OPCIONES_CAMAS_MATRIMONIALES = (
+    (0, '0 (sin camas matrimoniales)'),
+    (1, '1 cama matrimonial'),
+    (2, '2 camas matrimoniales'),
+    (3, '3 camas matrimoniales'),
+    (4, '4 camas matrimoniales'),
+)
+
+OPCIONES_CAMAS_INDIVIDUALES = (
+    (0, '0 (sin camas individuales)'),
+    (1, '1 cama individual'),
+    (2, '2 camas individuales'),
+    (3, '3 camas individuales'),
+    (4, '4 camas individuales'),
+    (5, '5 camas individuales'),
+    (6, '6 camas individuales'),
+    (7, '7 camas individuales'),
+    (8, '8 camas individuales'),
+)
+
+
+def parsear_camas(texto):
+    """
+    Extrae la cantidad de camas individuales y matrimoniales desde un texto o configuración preexistente.
+    Retorna tupla (ind, mat).
+    """
+    if not texto:
+        return 0, 0
+    texto_str = str(texto).lower()
+    mat = 0
+    ind = 0
+
+    # Buscar cantidad de camas matrimoniales
+    m_mat = re.search(r'(\d+)\s*(?:cama[s]?\s*)?matrimonial', texto_str)
+    if m_mat:
+        mat = int(m_mat.group(1))
+    elif 'matrimonial' in texto_str:
+        mat = 1
+
+    # Buscar cantidad de camas individuales
+    m_ind = re.search(r'(\d+)\s*(?:cama[s]?\s*)?individual', texto_str)
+    if m_ind:
+        ind = int(m_ind.group(1))
+    elif 'individual' in texto_str:
+        ind = 1
+
+    return ind, mat
+
+
+def formatear_camas(camas_individuales, camas_matrimoniales):
+    """
+    Genera el texto descriptivo de las camas combinando matrimoniales e individuales por separado.
+    Ej: '1 cama matrimonial + 2 camas individuales'
+    """
+    try:
+        ind = int(camas_individuales or 0)
+    except (ValueError, TypeError):
+        ind = 0
+    try:
+        mat = int(camas_matrimoniales or 0)
+    except (ValueError, TypeError):
+        mat = 0
+
+    partes = []
+    if mat > 0:
+        partes.append(f"{mat} cama matrimonial" if mat == 1 else f"{mat} camas matrimoniales")
+    if ind > 0:
+        partes.append(f"{ind} cama individual" if ind == 1 else f"{ind} camas individuales")
+
+    return " + ".join(partes)
+
+MODOS_NUMERACION_LOTE = (
+    ('serie', 'En serie correlativa (números consecutivos, ej: 101 al 105)'),
+    ('personalizada', 'Números específicos / no en serie (ej: 1, 3, 7, 10)'),
+)
+
+
+def parsear_numeros_habitacion(texto):
+    """
+    Parsea una cadena con números de habitación separados por comas, espacios,
+    puntos y comas, o guiones para rangos (ej: '1, 3, 7, 10' o '101-104, 108').
+    Tolera términos habituales como 'hab', 'habitación', 'la', 'el', 'n°'.
+    Devuelve una lista ordenada de enteros positivos únicos.
+    Lanza ValueError con mensaje descriptivo si encuentra valores no válidos.
+    """
+    if not texto:
+        return []
+
+    palabras_ignoradas = {
+        'hab', 'hab.', 'habitacion', 'habitación', 'habitaciones',
+        'n°', 'no.', 'no', 'num', 'núm', 'n', 'la', 'el', 'las', 'los', 'y'
+    }
+
+    # Normalizar separadores habituales
+    texto_limpio = texto.replace(';', ',').replace('\n', ',')
+    partes = [p.strip() for p in texto_limpio.split(',') if p.strip()]
+    numeros = set()
+
+    for parte in partes:
+        # Soporte para rangos como '5-8' o '101-105'
+        if '-' in parte:
+            sub = parte.split('-')
+            if len(sub) == 2 and sub[0].strip().isdigit() and sub[1].strip().isdigit():
+                desde = int(sub[0].strip())
+                hasta = int(sub[1].strip())
+                if desde <= hasta:
+                    if hasta - desde + 1 > 100:
+                        raise ValueError(f"El rango '{parte}' supera el límite máximo de 100 habitaciones.")
+                    for n in range(desde, hasta + 1):
+                        if n > 0:
+                            numeros.add(n)
+                        else:
+                            raise ValueError(f"El número {n} debe ser mayor a cero.")
+                    continue
+                else:
+                    raise ValueError(f"El rango '{parte}' es inválido (el inicio debe ser menor o igual al final).")
+            else:
+                raise ValueError(f"El rango '{parte}' no tiene un formato válido.")
+
+        # Subpartes separadas por espacio dentro de cada segmento
+        sub_tokens = parte.split()
+        for tok in sub_tokens:
+            tok_lower = tok.lower().strip()
+            if tok_lower in palabras_ignoradas:
+                continue
+            if tok.isdigit():
+                val = int(tok)
+                if val > 0:
+                    numeros.add(val)
+                else:
+                    raise ValueError(f"El número {val} debe ser mayor a cero.")
+            else:
+                raise ValueError(f"'{tok}' no es un número de habitación válido.")
+
+    if not numeros:
+        raise ValueError("No se encontraron números de habitación válidos. Ingresá números como: 1, 3, 7, 10.")
+
+    return sorted(list(numeros))
+
+
 class HabitacionLoteForm(forms.Form):
     """
-    Formulario para crear múltiples habitaciones de una vez, indicando un rango
-    de números (ej: del 1 al 100). Todas comparten piso, tipo, capacidad y precio.
+    Formulario para dar de alta múltiples habitaciones en lote para un alojamiento.
+    Permite dos formas de numeración:
+      1) Serie correlativa (número inicial y cantidad consecutiva).
+      2) Números específicos / no en serie (ej: 1, 3, 7, 10).
+    Separa de forma estricta la categoría del hotel de la capacidad máxima de personas.
     """
-    TIPOS_HABITACION = (
-        ('Individual', 'Individual (1 persona)'),
-        ('Doble', 'Doble (2 personas)'),
-        ('Twin', 'Twin (2 camas individuales)'),
-        ('Triple', 'Triple (3 personas)'),
-        ('Cuadruple', 'Cuádruple (4 personas)'),
-        ('Familiar', 'Familiar (hasta 6 personas)'),
-        ('Suite', 'Suite'),
-        ('Dormitorio compartido', 'Dormitorio compartido (hostel)'),
-        ('Simple', 'Simple'),
-    )
+    TIPOS_HABITACION = TIPOS_HABITACION
+    MODOS_NUMERACION = MODOS_NUMERACION_LOTE
 
-    hab_desde = forms.IntegerField(
-        label='Desde la habitación N°',
-        min_value=1,
-        widget=forms.NumberInput(attrs={'placeholder': '1'}),
+    modo_numeracion = forms.ChoiceField(
+        choices=MODOS_NUMERACION,
+        initial='serie',
+        required=False,
+        widget=forms.RadioSelect(attrs={'class': 'modo-numeracion-radio'}),
+        label='Modo de numeración',
+        help_text='Elegí si preferís crear una serie consecutiva o ingresar números específicos discontinuos.',
     )
-    hab_hasta = forms.IntegerField(
-        label='Hasta la habitación N°',
+    numero_inicial = forms.IntegerField(
+        label='Número inicial de habitación',
         min_value=1,
-        widget=forms.NumberInput(attrs={'placeholder': '10'}),
+        initial=101,
+        required=False,
+        widget=forms.NumberInput(attrs={'placeholder': 'Ej: 101', 'min': 1}),
+        help_text='Primer número de habitación para la serie correlativa.',
+    )
+    cantidad = forms.IntegerField(
+        label='Cantidad de habitaciones a crear',
+        min_value=1,
+        max_value=100,
+        initial=5,
+        required=False,
+        widget=forms.NumberInput(attrs={'placeholder': 'Ej: 5', 'min': 1, 'max': 100}),
+        help_text='Cantidad de habitaciones independientes a crear (1 a 100).',
+    )
+    numeros_personalizados = forms.CharField(
+        label='Números específicos de habitación',
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Ej: 1, 3, 7, 10 ó 101, 103, 105-108'}),
+        help_text='Ingresá los números separados por coma o espacio (ej: 1, 3, 7, 10). Podés combinar rangos con guión.',
     )
     numero_piso = forms.IntegerField(
         label='Piso',
         min_value=0,
         initial=1,
+        widget=forms.NumberInput(attrs={'placeholder': '1', 'min': 0}),
     )
-    tipo = forms.ChoiceField(choices=TIPOS_HABITACION, label='Tipo de habitación')
+    tipo = forms.ChoiceField(
+        choices=TIPOS_HABITACION,
+        label='Tipo de habitación (categoría)',
+    )
     capacidad_maxima = forms.IntegerField(
-        label='Capacidad máxima (personas)',
+        label='Capacidad máxima de huéspedes (personas)',
         min_value=1,
+        max_value=50,
+        initial=2,
+        widget=forms.NumberInput(attrs={'placeholder': 'Ej: 2', 'min': 1, 'max': 50}),
+        help_text='Capacidad de huéspedes por habitación (rango habitual de 1 a 8 personas).',
     )
     precio_noche = forms.IntegerField(
         label='Precio por noche ($)',
         min_value=1,
+        widget=forms.NumberInput(attrs={'placeholder': 'Ej: 15000', 'min': 1}),
+    )
+    camas_matrimoniales = forms.TypedChoiceField(
+        choices=OPCIONES_CAMAS_MATRIMONIALES,
+        coerce=int,
+        required=False,
+        initial=0,
+        label='Camas matrimoniales',
+        help_text='Cantidad de camas matrimoniales.',
+    )
+    camas_individuales = forms.TypedChoiceField(
+        choices=OPCIONES_CAMAS_INDIVIDUALES,
+        coerce=int,
+        required=False,
+        initial=0,
+        label='Camas individuales',
+        help_text='Cantidad de camas individuales.',
     )
     camas = forms.CharField(
-        label='Camas (opcional)',
-        max_length=100,
         required=False,
-        widget=forms.TextInput(attrs={'placeholder': 'Ej: 1 cama matrimonial o 2 individuales'}),
+        widget=forms.HiddenInput(),
     )
+    descripcion = forms.CharField(
+        label='Descripción común (opcional)',
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+    disponible = forms.BooleanField(
+        label='Disponibles para reservar',
+        required=False,
+        initial=True,
+    )
+
+    # Campos de compatibilidad con código previo o tests (hab_desde / hab_hasta)
+    hab_desde = forms.IntegerField(required=False, min_value=1, widget=forms.HiddenInput())
+    hab_hasta = forms.IntegerField(required=False, min_value=1, widget=forms.HiddenInput())
+
+    def __init__(self, *args, alojamiento=None, **kwargs):
+        self.alojamiento = alojamiento
+        super().__init__(*args, **kwargs)
 
     def clean(self):
         cleaned_data = super().clean()
-        desde = cleaned_data.get('hab_desde')
-        hasta = cleaned_data.get('hab_hasta')
-        if desde and hasta:
-            if hasta < desde:
-                self.add_error('hab_hasta', 'El número final debe ser mayor o igual al inicial.')
-            elif (hasta - desde + 1) > 200:
-                self.add_error('hab_hasta', 'No podés crear más de 200 habitaciones a la vez.')
+        modo = cleaned_data.get('modo_numeracion') or 'serie'
+        nums_pers = (cleaned_data.get('numeros_personalizados') or '').strip()
+
+        # Si se completó el campo de números específicos pero el modo quedó en serie,
+        # o si el modo fue seleccionado explícitamente como personalizada:
+        num_ini = cleaned_data.get('numero_inicial')
+        cant = cleaned_data.get('cantidad')
+
+        if modo == 'personalizada' or (nums_pers and (num_ini is None or not str(num_ini).strip())):
+            modo = 'personalizada'
+            cleaned_data['modo_numeracion'] = 'personalizada'
+
+        lista_numeros = []
+
+        if modo == 'personalizada':
+            if not nums_pers:
+                self.add_error('numeros_personalizados', 'Debés indicar los números de habitación a crear (ej: 1, 3, 7, 10).')
+            else:
+                try:
+                    lista_numeros = parsear_numeros_habitacion(nums_pers)
+                except ValueError as err:
+                    self.add_error('numeros_personalizados', str(err))
+
+                if lista_numeros:
+                    if len(lista_numeros) > 100:
+                        self.add_error('numeros_personalizados', 'No podés crear más de 100 habitaciones a la vez en un solo lote.')
+        else:
+            # Modo serie correlativa
+            # Compatibilidad con hab_desde y hab_hasta históricos
+            desde = cleaned_data.get('hab_desde')
+            hasta = cleaned_data.get('hab_hasta')
+            if (num_ini is None or cant is None) and (desde is not None and hasta is not None):
+                if hasta < desde:
+                    self.add_error('hab_hasta', 'El número final debe ser mayor o igual al inicial.')
+                    return cleaned_data
+                num_ini = desde
+                cant = hasta - desde + 1
+                cleaned_data['numero_inicial'] = num_ini
+                cleaned_data['cantidad'] = cant
+
+            if num_ini is None:
+                self.add_error('numero_inicial', 'Debés indicar el número inicial para la serie correlativa.')
+            elif num_ini < 1:
+                self.add_error('numero_inicial', 'El número inicial debe ser mayor a cero.')
+
+            if cant is None:
+                self.add_error('cantidad', 'Debés indicar la cantidad de habitaciones a crear.')
+            elif cant < 1:
+                self.add_error('cantidad', 'La cantidad de habitaciones debe ser mayor a cero.')
+            elif cant > 100:
+                self.add_error('cantidad', 'No podés crear más de 100 habitaciones a la vez en un solo lote.')
+
+            if num_ini and cant and 1 <= cant <= 100:
+                lista_numeros = list(range(num_ini, num_ini + cant))
+
+        cleaned_data['lista_numeros'] = lista_numeros
+
+        capacidad = cleaned_data.get('capacidad_maxima')
+        if capacidad is not None and capacidad < 1:
+            self.add_error('capacidad_maxima', 'La capacidad debe ser mayor a cero.')
+
+        precio = cleaned_data.get('precio_noche')
+        if precio is not None and precio < 1:
+            self.add_error('precio_noche', 'El precio por noche debe ser mayor a cero.')
+
+        # Manejo de camas (individuales y matrimoniales por separado)
+        camas_mat = cleaned_data.get('camas_matrimoniales')
+        camas_ind = cleaned_data.get('camas_individuales')
+        camas_directo = (cleaned_data.get('camas') or '').strip()
+
+        if camas_mat or camas_ind:
+            cleaned_data['camas'] = formatear_camas(camas_ind, camas_mat)
+        elif camas_directo:
+            ind_p, mat_p = parsear_camas(camas_directo)
+            if ind_p > 0 or mat_p > 0:
+                cleaned_data['camas'] = formatear_camas(ind_p, mat_p)
+            else:
+                cleaned_data['camas'] = camas_directo
+        else:
+            cleaned_data['camas'] = ''
+
+        # Verificar unicidad de números de habitación dentro del alojamiento
+        if self.alojamiento and lista_numeros:
+            existentes = list(
+                Habitacion.objects.filter(
+                    id_alohamiento=self.alojamiento,
+                    numero_habitacion__in=lista_numeros
+                ).values_list('numero_habitacion', flat=True)
+            )
+            if existentes:
+                existentes_str = ", ".join(str(n) for n in sorted(existentes))
+                campo_error = 'numeros_personalizados' if modo == 'personalizada' else 'numero_inicial'
+                self.add_error(
+                    campo_error,
+                    f'Las siguientes habitaciones ya existen en {self.alojamiento.nombre}: {existentes_str}. '
+                    'Modificá los números para no duplicar habitaciones.'
+                )
+
         return cleaned_data
 
 
@@ -436,31 +687,57 @@ class HabitacionForm(forms.ModelForm):
     """
     Formulario para dar de alta o modificar habitaciones asociadas a un alojamiento.
     Valida que los valores numéricos sean positivos y mayores a cero donde corresponda.
+    Separa de forma estricta la categoría (tipo) de la capacidad máxima de huéspedes.
     """
-    TIPOS_HABITACION = (
-        ('Individual', 'Individual (1 persona)'),
-        ('Doble', 'Doble (2 personas)'),
-        ('Twin', 'Twin (2 camas individuales)'),
-        ('Triple', 'Triple (3 personas)'),
-        ('Cuadruple', 'Cuádruple (4 personas)'),
-        ('Familiar', 'Familiar (hasta 6 personas)'),
-        ('Suite', 'Suite'),
-        ('Dormitorio compartido', 'Dormitorio compartido (hostel)'),
-        ('Simple', 'Simple'),
-    )
+    TIPOS_HABITACION = TIPOS_HABITACION
 
-    tipo = forms.ChoiceField(choices=TIPOS_HABITACION, label='Tipo de habitacion')
+    tipo = forms.ChoiceField(
+        choices=TIPOS_HABITACION,
+        label='Tipo de habitación (categoría)',
+    )
+    camas_matrimoniales = forms.TypedChoiceField(
+        choices=OPCIONES_CAMAS_MATRIMONIALES,
+        coerce=int,
+        required=False,
+        initial=0,
+        label='Camas matrimoniales',
+        help_text='Seleccioná la cantidad de camas matrimoniales.',
+    )
+    camas_individuales = forms.TypedChoiceField(
+        choices=OPCIONES_CAMAS_INDIVIDUALES,
+        coerce=int,
+        required=False,
+        initial=0,
+        label='Camas individuales',
+        help_text='Seleccioná la cantidad de camas individuales.',
+    )
+    camas = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+    capacidad_maxima = forms.IntegerField(
+        label='Capacidad máxima de huéspedes (personas)',
+        min_value=1,
+        max_value=50,
+        widget=forms.NumberInput(attrs={'min': 1, 'max': 50, 'placeholder': 'Ej: 2 (1 a 8 habitual)'}),
+        help_text='Cantidad de huéspedes que admite la habitación.',
+    )
+    precio_noche = forms.IntegerField(
+        label='Precio por noche ($)',
+        min_value=1,
+        widget=forms.NumberInput(attrs={'placeholder': 'Ej: 15000', 'min': 1}),
+    )
     disponible = forms.BooleanField(
         label='Disponible para reservar',
         required=False,
         initial=True,
-        help_text='Destildá esta opcion para marcar la habitacion como no disponible.'
+        help_text='Destildá esta opción para marcar la habitación como no disponible.',
     )
     fecha_desocupacion_automatica = forms.DateField(
         label='No disponible hasta (opcional)',
         required=False,
         widget=forms.DateInput(attrs={'type': 'date'}),
-        help_text='Si no está disponible, podés indicar hasta qué fecha para desocuparla automáticamente.'
+        help_text='Si no está disponible, podés indicar hasta qué fecha para desocuparla automáticamente.',
     )
 
     class Meta:
@@ -472,25 +749,34 @@ class HabitacionForm(forms.ModelForm):
             "tipo",
             "camas",
             "precio_noche",
-            "descripcion",
             "disponible",
             "fecha_desocupacion_automatica",
         ]
         labels = {
-            "numero_habitacion": "Numero de habitacion",
-            "numero_piso": "Numero de piso",
-            "capacidad_maxima": "Capacidad maxima",
-            "tipo": "Tipo de habitacion",
-            "camas": "Cantidad y tipo de camas",
-            "precio_noche": "Precio por noche",
-            "descripcion": "Descripción (opcional)",
+            "numero_habitacion": "Número de habitación",
+            "numero_piso": "Piso",
+            "capacidad_maxima": "Capacidad máxima de huéspedes",
+            "tipo": "Tipo de habitación",
+            "camas": "Configuración de camas",
+            "precio_noche": "Precio por noche ($)",
             "disponible": "Disponible para reservar",
             "fecha_desocupacion_automatica": "No disponible hasta (opcional)",
         }
         widgets = {
-            "camas": forms.TextInput(attrs={"placeholder": "Ej: 1 cama matrimonial"}),
-            "descripcion": forms.Textarea(attrs={"rows": 2, "placeholder": "Detalles adicionales, comodidades..."}),
+            "numero_habitacion": forms.NumberInput(attrs={"placeholder": "101", "min": 1}),
+            "numero_piso": forms.NumberInput(attrs={"placeholder": "1", "min": 0}),
         }
+
+    def __init__(self, *args, alojamiento=None, **kwargs):
+        self.alojamiento = alojamiento
+        super().__init__(*args, **kwargs)
+        if not self.alojamiento and self.instance and self.instance.pk:
+            self.alojamiento = getattr(self.instance, 'id_alohamiento', None)
+
+        if self.instance and self.instance.pk and self.instance.camas:
+            ind, mat = parsear_camas(self.instance.camas)
+            self.initial.setdefault('camas_individuales', ind)
+            self.initial.setdefault('camas_matrimoniales', mat)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -500,10 +786,54 @@ class HabitacionForm(forms.ModelForm):
                 self.add_error(field, 'El valor no puede ser negativo.')
 
         if cleaned_data.get('capacidad_maxima') == 0:
-            self.add_error('capacidad_maxima', 'La capacidad debe ser mayor a cero.')
+            self.add_error('capacidad_maxima', 'La capacidad debe ser mayor a cero (mínimo 1 persona).')
 
         if cleaned_data.get('precio_noche') == 0:
             self.add_error('precio_noche', 'El precio debe ser mayor a cero.')
+
+        # Manejo de camas (individuales y matrimoniales por separado)
+        camas_mat = cleaned_data.get('camas_matrimoniales')
+        camas_ind = cleaned_data.get('camas_individuales')
+        camas_directo = (cleaned_data.get('camas') or '').strip()
+
+        if camas_mat or camas_ind:
+            cleaned_data['camas'] = formatear_camas(camas_ind, camas_mat)
+        elif camas_directo:
+            ind_p, mat_p = parsear_camas(camas_directo)
+            if ind_p > 0 or mat_p > 0:
+                cleaned_data['camas'] = formatear_camas(ind_p, mat_p)
+            else:
+                cleaned_data['camas'] = camas_directo
+        else:
+            cleaned_data['camas'] = ''
+
+        # Validar que la fecha de desocupación no sea en el pasado
+        fecha_desocupacion = cleaned_data.get('fecha_desocupacion_automatica')
+        if fecha_desocupacion is not None:
+            hoy = timezone.now().date()
+            if fecha_desocupacion < hoy:
+                self.add_error(
+                    'fecha_desocupacion_automatica',
+                    'La fecha de desocupación no puede ser anterior a la fecha actual.'
+                )
+
+        # Si hay fecha de desocupación futura (o igual a hoy), forzar disponible=False
+        if fecha_desocupacion is not None and not self.errors.get('fecha_desocupacion_automatica'):
+            hoy = timezone.now().date()
+            if fecha_desocupacion >= hoy:
+                cleaned_data['disponible'] = False
+        elif cleaned_data.get('disponible'):
+            cleaned_data['fecha_desocupacion_automatica'] = None
+
+        # Validar unicidad del número de habitación dentro del alojamiento
+        num_hab = cleaned_data.get('numero_habitacion')
+        aloj = self.alojamiento or getattr(self.instance, 'id_alohamiento', None)
+        if aloj and num_hab:
+            qs = Habitacion.objects.filter(id_alohamiento=aloj, numero_habitacion=num_hab)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                self.add_error('numero_habitacion', f'Ya existe la habitación N° {num_hab} en este alojamiento.')
 
         return cleaned_data
 

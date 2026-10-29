@@ -130,32 +130,58 @@ class HotelReservaViewsTest(TestCase):
         piscina = ServicioAlojamiento.objects.get(nombre='Piscina')
 
         self.client.force_login(self.propietario)
+        # 1. El registro del hotel crea exclusivamente el alojamiento y sus servicios (sin habitaciones automáticas)
         resp = self.client.post(reverse('registro_hoteles'), {
             'nombre': 'Resort Mega Playa',
             'calle': 'Av. Maritima',
             'numero_calle': '500',
             'descripcion': 'Resort con todos los servicios y 50 habitaciones.',
             'servicios': [wifi.id, piscina.id],
-            'crear_habitaciones_lote': True,
-            'hab_desde': 1,
-            'hab_hasta': 20,
-            'numero_piso': 1,
-            'tipo': 'Doble',
-            'capacidad_maxima': 2,
-            'precio_noche': 8500,
         })
         self.assertRedirects(resp, reverse('mis_hoteles'))
 
         hotel = Alojamiento.objects.get(nombre='Resort Mega Playa')
         self.assertEqual(hotel.estado, 'P')
-        # Verifica que se crearon 20 habitaciones en lote
-        self.assertEqual(hotel.habitacion_set.count(), 20)
-        self.assertTrue(Habitacion.objects.filter(id_alohamiento=hotel, numero_habitacion=1).exists())
-        self.assertTrue(Habitacion.objects.filter(id_alohamiento=hotel, numero_habitacion=20).exists())
+        # Verifica que NO se crean habitaciones automáticamente durante el registro
+        self.assertEqual(hotel.habitacion_set.count(), 0)
         # Verifica que se guardaron los servicios
         self.assertEqual(hotel.servicios.count(), 2)
         self.assertTrue(hotel.servicios.filter(nombre='Wi-Fi').exists())
         self.assertTrue(hotel.servicios.filter(nombre='Piscina').exists())
+
+        # 2. No se pueden crear habitaciones en lote mientras el hotel está pendiente
+        resp_lote_pend = self.client.post(reverse('registrar_habitacion_lote', args=[hotel.id]), {
+            'numero_inicial': 1,
+            'cantidad': 20,
+            'numero_piso': 1,
+            'tipo': 'Doble',
+            'capacidad_maxima': 2,
+            'precio_noche': 8500,
+        })
+        self.assertRedirects(resp_lote_pend, reverse('mis_hoteles'))
+        self.assertEqual(hotel.habitacion_set.count(), 0)
+
+        # 3. Una vez aprobado el hotel, se crean las habitaciones en lote desde Mis Hoteles
+        hotel.estado = 'A'
+        hotel.save()
+
+        resp_lote = self.client.post(reverse('registrar_habitacion_lote', args=[hotel.id]), {
+            'numero_inicial': 1,
+            'cantidad': 20,
+            'numero_piso': 1,
+            'tipo': 'Doble',
+            'capacidad_maxima': 2,
+            'precio_noche': 8500,
+        })
+        self.assertRedirects(resp_lote, reverse('mis_hoteles'))
+
+        # Verifica que se crearon exactamente 20 habitaciones en lote
+        self.assertEqual(hotel.habitacion_set.count(), 20)
+        self.assertTrue(Habitacion.objects.filter(id_alohamiento=hotel, numero_habitacion=1).exists())
+        self.assertTrue(Habitacion.objects.filter(id_alohamiento=hotel, numero_habitacion=20).exists())
+        hab1 = Habitacion.objects.get(id_alohamiento=hotel, numero_habitacion=1)
+        self.assertEqual(hab1.tipo, 'Doble')
+        self.assertEqual(hab1.capacidad_maxima, 2)
 
     def test_vista_invitado_home_y_redireccion_login_al_reservar(self):
         from hotelghino.models import Alojamiento
@@ -1077,7 +1103,12 @@ class ValidacionImagenesTests(TestCase):
         self.assertIn("no es una imagen", str(ctx.exception))
 
     def test_acepta_imagen_png_valida(self):
-        png_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        import io
+        from PIL import Image
+        buf = io.BytesIO()
+        img = Image.new('RGB', (10, 10), color='blue')
+        img.save(buf, format='PNG')
+        png_bytes = buf.getvalue()
         png_file = SimpleUploadedFile("pixel.png", png_bytes, content_type="image/png")
 
         try:
@@ -1300,6 +1331,379 @@ class DisponibilidadYConcurrenciaReservasTests(TestCase):
         reserva = Reserva.objects.get(id_habitacion=self.hab1, id_usuario=self.huesped1)
         self.assertEqual(reserva.pago, 40000)
         self.assertEqual(reserva.cantidad_huespedes, 2)
+
+
+class MejorasHotelGhinoTests(TestCase):
+    """
+    Tests exhaustivos para las mejoras y correcciones implementadas:
+    1. Bloqueo riguroso de PDFs y archivos no-imagen en uploads.
+    2. Separación estricta de tipo de habitación y capacidad de huéspedes.
+    3. Flujo de creación de habitaciones en lote trasladado a 'Mis hoteles'.
+    4. Validación de unicidad de habitaciones por hotel y no duplicación en lote.
+    5. Integridad relacional Habitacion -> Alojamiento -> Reserva.
+    """
+    def setUp(self):
+        from hotelghino.models import Usuario, Alojamiento, Habitacion
+        self.propietario = Usuario.objects.create_user(
+            username='prop_mejoras',
+            email='prop_mejoras@example.com',
+            password='Password123!',
+            dni=44111222,
+            telefono='1144445555',
+            rol='P',
+            email_verificado=True
+        )
+        self.huesped = Usuario.objects.create_user(
+            username='huesped_mejoras',
+            email='huesped_mejoras@example.com',
+            password='Password123!',
+            dni=44222333,
+            telefono='1155556666',
+            rol='H',
+            email_verificado=True
+        )
+        self.hotel = Alojamiento.objects.create(
+            nombre='Hotel Mejoras Premium',
+            calle='Av. Las Flores',
+            numero_calle='1200',
+            ciudad='Mar del Plata',
+            direccion_completa='Av. Las Flores 1200, Mar del Plata',
+            latitud=-38.0055,
+            longitud=-57.5426,
+            descripcion='Hotel de prueba para validar nuevas características.',
+            id_usuario=self.propietario,
+            estado='A',
+            tipo='HT'
+        )
+
+    def test_rechazo_pdf_en_subida_de_imagenes(self):
+        from hotelghino.validators import validar_archivo_imagen
+        pdf_bytes = b"%PDF-1.4\n%Fake PDF content for test\n%%EOF"
+        pdf_file = SimpleUploadedFile("documento.pdf", pdf_bytes, content_type="application/pdf")
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_archivo_imagen(pdf_file)
+        self.assertIn("PDF", str(ctx.exception))
+
+    def test_rechazo_pdf_camuflado_como_png(self):
+        from hotelghino.validators import validar_archivo_imagen
+        pdf_bytes = b"%PDF-1.7\nFake disguised PDF content\n%%EOF"
+        disguised = SimpleUploadedFile("trampa.png", pdf_bytes, content_type="image/png")
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_archivo_imagen(disguised)
+        self.assertTrue(
+            "PDF" in str(ctx.exception) or "no es una imagen válida" in str(ctx.exception)
+        )
+
+    def test_rechazo_imagen_que_supera_limite_de_10mb(self):
+        from hotelghino.validators import validar_archivo_imagen
+        huge_file = SimpleUploadedFile("enorme.jpg", b"0" * 10, content_type="image/jpeg")
+        huge_file.size = 11 * 1024 * 1024  # Simular 11 MB
+
+        with self.assertRaises(ValidationError) as ctx:
+            validar_archivo_imagen(huge_file)
+        self.assertIn("supera el tamaño máximo", str(ctx.exception))
+
+    def test_tipos_habitacion_separados_de_capacidad(self):
+        from hotelghino.forms import HabitacionForm
+        # Categorías hoteleras habituales que no incrustan capacidad en el nombre
+        # 'Individual' fue eliminado del form (se unificó con 'Simple' para datos históricos)
+        categorias = [
+            'Doble', 'Twin', 'Matrimonial', 'Triple',
+            'Cuadruple', 'Familiar', 'Suite junior', 'Suite',
+            'Estudio o monoambiente', 'Departamento o apartamento'
+        ]
+        for idx, cat in enumerate(categorias, start=101):
+            form = HabitacionForm(data={
+                'numero_habitacion': idx,
+                'numero_piso': 1,
+                'tipo': cat,
+                'capacidad_maxima': (idx % 8) + 1,  # Capacidad independiente entre 1 y 8
+                'precio_noche': 10000 + idx,
+                'camas': '1 cama matrimonial',
+                'disponible': True,
+            }, alojamiento=self.hotel)
+            self.assertTrue(form.is_valid(), f"El tipo {cat} falló la validación: {form.errors}")
+
+    def test_rechazo_capacidad_cero_o_negativa(self):
+        from hotelghino.forms import HabitacionForm
+        form_cero = HabitacionForm(data={
+            'numero_habitacion': 201,
+            'numero_piso': 2,
+            'tipo': 'Doble',
+            'capacidad_maxima': 0,
+            'precio_noche': 12000,
+        }, alojamiento=self.hotel)
+        self.assertFalse(form_cero.is_valid())
+        self.assertIn('capacidad_maxima', form_cero.errors)
+
+    def test_rechazo_numero_habitacion_duplicado_en_mismo_hotel(self):
+        from hotelghino.models import Habitacion
+        from hotelghino.forms import HabitacionForm
+        Habitacion.objects.create(
+            numero_habitacion=301,
+            numero_piso=3,
+            capacidad_maxima=2,
+            tipo='Doble',
+            precio_noche=15000,
+            id_alohamiento=self.hotel,
+            id_usuario=self.propietario
+        )
+        form_dup = HabitacionForm(data={
+            'numero_habitacion': 301,
+            'numero_piso': 3,
+            'tipo': 'Suite',
+            'capacidad_maxima': 4,
+            'precio_noche': 20000,
+        }, alojamiento=self.hotel)
+        self.assertFalse(form_dup.is_valid())
+        self.assertIn('numero_habitacion', form_dup.errors)
+
+    def test_creacion_en_lote_desde_mis_hoteles(self):
+        from hotelghino.models import Habitacion
+        self.client.force_login(self.propietario)
+        resp = self.client.post(reverse('registrar_habitacion_lote', args=[self.hotel.id]), {
+            'numero_inicial': 401,
+            'cantidad': 5,
+            'numero_piso': 4,
+            'tipo': 'Familiar',
+            'capacidad_maxima': 6,
+            'precio_noche': 18000,
+            'camas': '1 matrimonial y 2 individuales',
+            'descripcion': 'Habitaciones familiares con vista panorámica',
+            'disponible': True,
+        })
+        self.assertRedirects(resp, reverse('mis_hoteles'))
+        # Se crearon exactamente las 5 habitaciones (401 a 405)
+        self.assertEqual(Habitacion.objects.filter(id_alohamiento=self.hotel, numero_piso=4).count(), 5)
+        hab401 = Habitacion.objects.get(id_alohamiento=self.hotel, numero_habitacion=401)
+        self.assertEqual(hab401.tipo, 'Familiar')
+        self.assertEqual(hab401.capacidad_maxima, 6)
+        self.assertEqual(hab401.precio_noche, 18000)
+
+    def test_creacion_en_lote_valida_duplicados_existentes(self):
+        from hotelghino.models import Habitacion
+        Habitacion.objects.create(
+            numero_habitacion=503,
+            numero_piso=5,
+            capacidad_maxima=2,
+            tipo='Doble',
+            precio_noche=10000,
+            id_alohamiento=self.hotel,
+            id_usuario=self.propietario
+        )
+        self.client.force_login(self.propietario)
+        # Intentar crear lote del 501 al 505 (incluye el 503 existente)
+        resp = self.client.post(reverse('registrar_habitacion_lote', args=[self.hotel.id]), {
+            'numero_inicial': 501,
+            'cantidad': 5,
+            'numero_piso': 5,
+            'tipo': 'Triple',
+            'capacidad_maxima': 3,
+            'precio_noche': 12000,
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'ya existen')
+        # No se crearon habitaciones adicionales
+        self.assertEqual(Habitacion.objects.filter(id_alohamiento=self.hotel, numero_piso=5).count(), 1)
+
+    def test_creacion_en_lote_con_numeros_no_en_serie(self):
+        """Permite crear lotes con números discontinuos (ej: la 1, la 3, la 7 y la 10)."""
+        from hotelghino.models import Habitacion
+        self.client.force_login(self.propietario)
+        resp = self.client.post(reverse('registrar_habitacion_lote', args=[self.hotel.id]), {
+            'modo_numeracion': 'personalizada',
+            'numeros_personalizados': '1, 3, 7, 10',
+            'numero_piso': 1,
+            'tipo': 'Suite',
+            'capacidad_maxima': 3,
+            'precio_noche': 22000,
+            'camas': '1 matrimonial y 1 individual',
+            'disponible': True,
+        })
+        self.assertRedirects(resp, reverse('mis_hoteles'))
+
+        # Se crearon exactamente las 4 habitaciones discontinuas: 1, 3, 7 y 10
+        creadas = list(Habitacion.objects.filter(
+            id_alohamiento=self.hotel,
+            numero_habitacion__in=[1, 3, 7, 10]
+        ).values_list('numero_habitacion', flat=True))
+        self.assertEqual(sorted(creadas), [1, 3, 7, 10])
+
+        # Verificar que una habitación no especificada (ej: 2) no fue creada
+        self.assertFalse(Habitacion.objects.filter(id_alohamiento=self.hotel, numero_habitacion=2).exists())
+
+    def test_creacion_en_lote_con_lenguaje_natural_y_prefijos(self):
+        """Permite ingresar frases como 'la 1, la 3, la 7 y la 10' o 'hab 21, hab 25'."""
+        from hotelghino.models import Habitacion
+        self.client.force_login(self.propietario)
+        resp = self.client.post(reverse('registrar_habitacion_lote', args=[self.hotel.id]), {
+            'modo_numeracion': 'personalizada',
+            'numeros_personalizados': 'la 21, la 23, la 27 y la 30',
+            'numero_piso': 2,
+            'tipo': 'Matrimonial',
+            'capacidad_maxima': 2,
+            'precio_noche': 16000,
+            'disponible': True,
+        })
+        self.assertRedirects(resp, reverse('mis_hoteles'))
+
+        creadas = list(Habitacion.objects.filter(
+            id_alohamiento=self.hotel,
+            numero_habitacion__in=[21, 23, 27, 30]
+        ).values_list('numero_habitacion', flat=True))
+        self.assertEqual(sorted(creadas), [21, 23, 27, 30])
+
+    def test_creacion_en_lote_con_mezcla_de_numeros_y_rangos(self):
+        """Permite combinar números sueltos y rangos (ej: '101, 103, 105-107')."""
+        from hotelghino.models import Habitacion
+        self.client.force_login(self.propietario)
+        resp = self.client.post(reverse('registrar_habitacion_lote', args=[self.hotel.id]), {
+            'modo_numeracion': 'personalizada',
+            'numeros_personalizados': '101, 103, 105-107',
+            'numero_piso': 1,
+            'tipo': 'Simple',
+            'capacidad_maxima': 1,
+            'precio_noche': 9000,
+            'disponible': True,
+        })
+        self.assertRedirects(resp, reverse('mis_hoteles'))
+
+        creadas = list(Habitacion.objects.filter(
+            id_alohamiento=self.hotel,
+            numero_habitacion__in=[101, 103, 105, 106, 107]
+        ).values_list('numero_habitacion', flat=True))
+        self.assertEqual(sorted(creadas), [101, 103, 105, 106, 107])
+
+    def test_creacion_en_lote_personalizada_detecta_duplicados_existentes(self):
+        """Si alguna de las habitaciones discontinuas ya existe, rechaza y señala el conflicto."""
+        from hotelghino.models import Habitacion
+        Habitacion.objects.create(
+            numero_habitacion=77,
+            numero_piso=7,
+            capacidad_maxima=2,
+            tipo='Doble',
+            precio_noche=12000,
+            id_alohamiento=self.hotel,
+            id_usuario=self.propietario
+        )
+        self.client.force_login(self.propietario)
+        resp = self.client.post(reverse('registrar_habitacion_lote', args=[self.hotel.id]), {
+            'modo_numeracion': 'personalizada',
+            'numeros_personalizados': '71, 74, 77, 80',
+            'numero_piso': 7,
+            'tipo': 'Triple',
+            'capacidad_maxima': 3,
+            'precio_noche': 15000,
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'ya existen')
+        self.assertContains(resp, '77')
+        # No se crearon las demás porque falló la validación
+        self.assertFalse(Habitacion.objects.filter(id_alohamiento=self.hotel, numero_habitacion=71).exists())
+
+    def test_integridad_relacional_habitacion_alojamiento_reserva(self):
+        from hotelghino.models import Habitacion, Reserva
+        hab = Habitacion.objects.create(
+            numero_habitacion=601,
+            numero_piso=6,
+            capacidad_maxima=4,
+            tipo='Cuadruple',
+            precio_noche=25000,
+            id_alohamiento=self.hotel,
+            id_usuario=self.propietario
+        )
+        hoy = date.today()
+        reserva = Reserva.objects.create(
+            id_usuario=self.huesped,
+            id_habitacion=hab,
+            id_alohamiento=self.hotel,
+            fecha_inicio=hoy + timedelta(days=2),
+            fecha_finalizacion=hoy + timedelta(days=5),
+            cantidad_huespedes=3,
+            pago=75000,
+            estado='Confirmada'
+        )
+        # Verificar coherencia total de la cadena
+        self.assertEqual(reserva.id_habitacion.id_alohamiento, self.hotel)
+        self.assertEqual(reserva.id_alohamiento.id_usuario, self.propietario)
+        self.assertEqual(reserva.id_usuario, self.huesped)
+        self.assertTrue(self.hotel.habitacion_set.filter(id=hab.id).exists())
+
+    def test_validacion_fecha_desocupacion_no_permite_pasadas(self):
+        """No permite colocar fechas anteriores a la fecha actual para desocupación."""
+        from hotelghino.forms import HabitacionForm
+        ayer = date.today() - timedelta(days=1)
+        form = HabitacionForm(data={
+            'numero_habitacion': 801,
+            'numero_piso': 8,
+            'tipo': 'Doble',
+            'capacidad_maxima': 2,
+            'precio_noche': 15000,
+            'camas_matrimoniales': 1,
+            'camas_individuales': 0,
+            'disponible': False,
+            'fecha_desocupacion_automatica': ayer,
+        }, alojamiento=self.hotel)
+        self.assertFalse(form.is_valid())
+        self.assertIn('fecha_desocupacion_automatica', form.errors)
+        self.assertIn('anterior a la fecha actual', str(form.errors['fecha_desocupacion_automatica']))
+
+    def test_fecha_desocupacion_futura_fuerza_no_disponible(self):
+        """Al ingresar una fecha futura para desocupación, la habitación se guarda como no disponible."""
+        from hotelghino.forms import HabitacionForm
+        futuro = date.today() + timedelta(days=5)
+        form = HabitacionForm(data={
+            'numero_habitacion': 802,
+            'numero_piso': 8,
+            'tipo': 'Doble',
+            'capacidad_maxima': 2,
+            'precio_noche': 15000,
+            'camas_matrimoniales': 1,
+            'camas_individuales': 0,
+            'disponible': True,  # Incluso si el usuario dejó marcado disponible
+            'fecha_desocupacion_automatica': futuro,
+        }, alojamiento=self.hotel)
+        self.assertTrue(form.is_valid(), f"Errores en form: {form.errors}")
+        hab = form.save(commit=False)
+        hab.id_alohamiento = self.hotel
+        hab.id_usuario = self.propietario
+        hab.save()
+        self.assertFalse(hab.disponible)
+        self.assertEqual(hab.fecha_desocupacion_automatica, futuro)
+
+    def test_seleccion_camas_matrimoniales_e_individuales_por_separado(self):
+        """Verifica que las camas se configuren combinando matrimoniales e individuales."""
+        from hotelghino.forms import HabitacionForm
+        form = HabitacionForm(data={
+            'numero_habitacion': 803,
+            'numero_piso': 8,
+            'tipo': 'Triple',
+            'capacidad_maxima': 3,
+            'precio_noche': 20000,
+            'camas_matrimoniales': 1,
+            'camas_individuales': 2,
+            'disponible': True,
+        }, alojamiento=self.hotel)
+        self.assertTrue(form.is_valid(), f"Errores en form: {form.errors}")
+        self.assertEqual(form.cleaned_data['camas'], '1 cama matrimonial + 2 camas individuales')
+
+    def test_tipo_individual_eliminado_de_opciones_de_formulario(self):
+        """Verifica que 'Individual' no forme parte de las opciones seleccionables en los formularios."""
+        from hotelghino.forms import HabitacionForm, HabitacionLoteForm
+        form_hab = HabitacionForm(alojamiento=self.hotel)
+        form_lote = HabitacionLoteForm(alojamiento=self.hotel)
+
+        opciones_hab = [c[0] for c in form_hab.fields['tipo'].choices]
+        opciones_lote = [c[0] for c in form_lote.fields['tipo'].choices]
+
+        self.assertNotIn('Individual', opciones_hab)
+        self.assertNotIn('Individual', opciones_lote)
+        self.assertIn('Simple', opciones_hab)
+        self.assertIn('Simple', opciones_lote)
+
+
 
 
 

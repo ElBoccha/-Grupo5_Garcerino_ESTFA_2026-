@@ -163,7 +163,7 @@
                 {% endif %}
                 <label for="id_imagen_principal">
                     Cambiar imagen principal (portada)
-                    <input type="file" name="imagen_principal" id="id_imagen_principal" accept="image/*">
+                    <input type="file" name="imagen_principal" id="id_imagen_principal" accept=".jpg,.jpeg,.png,.webp,.gif">
                 </label>
 
                 {% if imgs_extra %}
@@ -178,7 +178,7 @@
                 {% endif %}
                 <label for="id_imagenes_extra">
                     Agregar más imágenes
-                    <input type="file" name="imagenes_extra" id="id_imagenes_extra" accept="image/*" multiple>
+                    <input type="file" name="imagenes_extra" id="id_imagenes_extra" accept=".jpg,.jpeg,.png,.webp,.gif" multiple>
                     <span class="helptext">Podés subir hasta llegar al límite de 10 fotos.</span>
                 </label>
             </div>

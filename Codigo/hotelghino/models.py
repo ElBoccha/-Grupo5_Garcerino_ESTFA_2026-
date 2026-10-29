@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
+from .validators import validar_archivo_imagen
 
 
 class Usuario(AbstractUser):
@@ -223,23 +224,39 @@ class Alojamiento(models.Model):
 class Habitacion(models.Model):
     """
     Representa una habitación individual perteneciente a un alojamiento determinado.
+    El tipo identifica la categoría hotelera y la capacidad se almacena de forma independiente.
     """
     TIPOS = (
-        ('Individual', 'Individual'),
+        ('Simple', 'Simple'),
         ('Doble', 'Doble'),
-        ('Twin', 'Twin (2 camas individuales)'),
+        ('Twin', 'Twin (dos camas individuales)'),
+        ('Matrimonial', 'Matrimonial'),
         ('Triple', 'Triple'),
         ('Cuadruple', 'Cuádruple'),
         ('Familiar', 'Familiar'),
+        ('Suite junior', 'Suite junior'),
         ('Suite', 'Suite'),
+        ('Estudio o monoambiente', 'Estudio o monoambiente'),
+        ('Departamento o apartamento', 'Departamento o apartamento'),
         ('Dormitorio compartido', 'Dormitorio compartido'),
-        ('Simple', 'Simple'),  # Compatibilidad con registros existentes
+        # Compatibilidad con valores preexistentes en la base de datos
+        ('Individual', 'Individual'),
+        ('Doble Standard', 'Doble Standard'),
+        ('Doble Vista al Mar', 'Doble Vista al Mar'),
+        ('Suite Familiar', 'Suite Familiar'),
+        ('Suite Presidencial', 'Suite Presidencial'),
+        ('Doble Clásica', 'Doble Clásica'),
+        ('Triple Serrano', 'Triple Serrano'),
+        ('Suite Spa', 'Suite Spa'),
+        ('Superior Bosque', 'Superior Bosque'),
+        ('Junior Suite', 'Junior Suite'),
+        ('Suite Familiar Jardín', 'Suite Familiar Jardín'),
     )
 
-    numero_habitacion = models.IntegerField()
-    numero_piso = models.IntegerField()
-    capacidad_maxima = models.IntegerField()
-    tipo = models.CharField(max_length=30, choices=TIPOS, default='Doble')
+    numero_habitacion = models.IntegerField(validators=[MinValueValidator(1)])
+    numero_piso = models.IntegerField(validators=[MinValueValidator(0)])
+    capacidad_maxima = models.IntegerField(validators=[MinValueValidator(1)])
+    tipo = models.CharField(max_length=50, choices=TIPOS, default='Doble')
     camas = models.CharField(
         max_length=100,
         blank=True,
@@ -458,7 +475,11 @@ class ImagenAlojamiento(models.Model):
         on_delete=models.CASCADE,
         related_name='imagenes'
     )
-    imagen = models.ImageField(upload_to='hoteles/', verbose_name='Imagen')
+    imagen = models.ImageField(
+        upload_to='hoteles/',
+        verbose_name='Imagen',
+        validators=[validar_archivo_imagen]
+    )
     es_principal = models.BooleanField(default=False, verbose_name='Imagen principal')
     orden = models.PositiveSmallIntegerField(default=0)
 

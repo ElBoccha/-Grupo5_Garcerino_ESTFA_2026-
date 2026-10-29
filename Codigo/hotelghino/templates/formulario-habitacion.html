@@ -117,55 +117,39 @@
                 </label>
             </div>
 
+            <label for="id_tipo">
+                Tipo de habitación (categoría)
+                {{ form.tipo }}
+                {% if form.tipo.errors %}
+                    <span class="form-error">{{ form.tipo.errors|join:", " }}</span>
+                {% endif %}
+            </label>
+
             <div class="form-row">
-                <label for="id_tipo_habitacion">
-                    Tipo de habitación
-                    <select id="id_tipo_habitacion" name="tipo" required>
-                        <option value="">— Elegí un tipo —</option>
-                        <option value="Individual" {% if form.tipo.value == "Individual" %}selected{% endif %}>Individual (1 persona)</option>
-                        <option value="Doble"  {% if form.tipo.value == "Doble"  %}selected{% endif %}>Doble (2 personas)</option>
-                        <option value="Twin" {% if form.tipo.value == "Twin" %}selected{% endif %}>Twin (2 camas individuales)</option>
-                        <option value="Triple" {% if form.tipo.value == "Triple" %}selected{% endif %}>Triple (3 personas)</option>
-                        <option value="Cuadruple" {% if form.tipo.value == "Cuadruple" %}selected{% endif %}>Cuádruple (4 personas)</option>
-                        <option value="Familiar" {% if form.tipo.value == "Familiar" %}selected{% endif %}>Familiar (hasta 6 personas)</option>
-                        <option value="Suite"  {% if form.tipo.value == "Suite"  %}selected{% endif %}>Suite</option>
-                        <option value="Dormitorio compartido" {% if form.tipo.value == "Dormitorio compartido" %}selected{% endif %}>Dormitorio compartido (hostel)</option>
-                        {% if form.tipo.value == "Simple" %}
-                            <option value="Simple" selected>Simple (histórico)</option>
-                        {% endif %}
+                <label for="id_camas_matrimoniales">
+                    Camas matrimoniales
+                    <select id="id_camas_matrimoniales" name="camas_matrimoniales">
+                        {% for value, label in form.fields.camas_matrimoniales.choices %}
+                            <option value="{{ value }}" {% if form.camas_matrimoniales.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
                     </select>
-                    {% if form.tipo.errors %}
-                        <span class="form-error">{{ form.tipo.errors|join:", " }}</span>
+                    {% if form.camas_matrimoniales.errors %}
+                        <span class="form-error">{{ form.camas_matrimoniales.errors|join:", " }}</span>
                     {% endif %}
                 </label>
 
-                <label for="id_camas">
-                    Cantidad y tipo de camas
-                    <input
-                        id="id_camas"
-                        type="text"
-                        name="camas"
-                        value="{{ form.camas.value|default:'' }}"
-                        placeholder="Ej: 1 cama matrimonial o 2 individuales"
-                    >
-                    {% if form.camas.errors %}
-                        <span class="form-error">{{ form.camas.errors|join:", " }}</span>
+                <label for="id_camas_individuales">
+                    Camas individuales
+                    <select id="id_camas_individuales" name="camas_individuales">
+                        {% for value, label in form.fields.camas_individuales.choices %}
+                            <option value="{{ value }}" {% if form.camas_individuales.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.camas_individuales.errors %}
+                        <span class="form-error">{{ form.camas_individuales.errors|join:", " }}</span>
                     {% endif %}
                 </label>
             </div>
-
-            <label for="id_descripcion_hab">
-                Descripción de la habitación (opcional)
-                <textarea
-                    id="id_descripcion_hab"
-                    name="descripcion"
-                    rows="2"
-                    placeholder="Detalles sobre equipamiento, baño privado, balcón, etc."
-                >{{ form.descripcion.value|default:'' }}</textarea>
-                {% if form.descripcion.errors %}
-                    <span class="form-error">{{ form.descripcion.errors|join:", " }}</span>
-                {% endif %}
-            </label>
 
             <div class="form-row">
                 <label for="id_disponible" style="display:flex;align-items:center;gap:.75rem;flex-direction:row;min-height:46px;">
@@ -186,6 +170,7 @@
                         type="date"
                         name="fecha_desocupacion_automatica"
                         value="{{ form.fecha_desocupacion_automatica.value|date:'Y-m-d'|default:'' }}"
+                        min="{{ hoy|date:'Y-m-d' }}"
                     >
                     {% if form.fecha_desocupacion_automatica.errors %}
                         <span class="form-error">{{ form.fecha_desocupacion_automatica.errors|join:", " }}</span>
@@ -201,4 +186,25 @@
         <p class="panel-footer"><a href="{% url 'mis_hoteles' %}">Volver a mis hoteles</a></p>
     </section>
 </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var checkDisponible = document.getElementById('id_disponible');
+    var inputFecha = document.getElementById('id_fecha_desocupacion');
+
+    if (checkDisponible && inputFecha) {
+        inputFecha.addEventListener('change', function() {
+            if (this.value) {
+                checkDisponible.checked = false;
+            }
+        });
+
+        checkDisponible.addEventListener('change', function() {
+            if (this.checked) {
+                inputFecha.value = '';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

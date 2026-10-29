@@ -136,28 +136,37 @@
         });
 
         // Geocodificación inversa con Nominatim (OpenStreetMap)
+        let reverseGeocodeRequestId = 0;
+
         function reverseGeocode(lat, lng) {
             const now = Date.now();
             // Respetar política de uso de Nominatim (1 req / seg)
             const delay = Math.max(0, 1000 - (now - lastReverseRequestTime));
             lastReverseRequestTime = now + delay;
 
+            const currentRequestId = ++reverseGeocodeRequestId;
+
             setTimeout(function() {
-                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&addressdetails=1&accept-language=es`;
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&addressdetails=1&accept-language=es&email=soporte@hotelghino.com`;
 
                 fetch(url, {
-                    headers: { 'Accept': 'application/json' }
+                    headers: {
+                        'Accept': 'application/json'
+                    }
                 })
                 .then(function(res) {
-                    if (!res.ok) throw new Error('Error en consulta de geocodificación inversa');
+                    if (!res.ok) throw new Error('Error en consulta de geocodificación inversa (HTTP ' + res.status + ')');
                     return res.json();
                 })
                 .then(function(data) {
+                    // Ignorar respuesta si hubo una solicitud más reciente
+                    if (currentRequestId !== reverseGeocodeRequestId) return;
                     if (!data || !data.address) return;
                     fillFieldsFromNominatim(data, false);
                 })
                 .catch(function(err) {
                     console.warn('Nominatim reverse error:', err);
+                    // Si falla la geocodificación automática, las coordenadas siguen fijadas y el usuario puede escribir la dirección manualmente
                 });
             }, delay);
         }
@@ -235,10 +244,12 @@
                 searchResultsList.appendChild(loadingLi);
                 searchResultsList.style.display = 'block';
 
-                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.trim())}&addressdetails=1&limit=5&accept-language=es`;
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.trim())}&addressdetails=1&limit=5&accept-language=es&email=soporte@hotelghino.com`;
 
                 fetch(url, {
-                    headers: { 'Accept': 'application/json' }
+                    headers: {
+                        'Accept': 'application/json'
+                    }
                 })
                 .then(function(res) {
                     if (!res.ok) throw new Error('Error en búsqueda de direcciones');
