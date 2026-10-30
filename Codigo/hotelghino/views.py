@@ -964,10 +964,18 @@ def solicitudPropietario(request):
     })
 
 
-@login_required
 def detalleHotel(request, alojamiento_id):
     sincronizar_disponibilidad_habitaciones()
     alojamiento = get_object_or_404(Alojamiento, pk=alojamiento_id)
+
+    # Control de acceso por estado: hoteles pendientes/rechazados solo visibles
+    # para el propietario del hotel o administradores.
+    if alojamiento.estado != 'A':
+        es_propietario = request.user.is_authenticated and alojamiento.id_usuario == request.user
+        es_admin = request.user.is_authenticated and request.user.rol == 'A'
+        if not (es_propietario or es_admin):
+            from django.http import Http404
+            raise Http404("Este hotel no está disponible.")
     habitaciones = Habitacion.objects.filter(id_alohamiento=alojamiento).order_by('numero_habitacion')
 
     desde = request.GET.get('desde', '').strip() or request.POST.get('fecha_inicio', '').strip()
